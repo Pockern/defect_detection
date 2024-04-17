@@ -160,16 +160,16 @@ def main():
 
     # ----------------------------------------------------------------------------
     # test for myself
-    # language = "c"
-    # with open('./c/bad_1_0') as f:
-    #     code = f.read()
-    # functions, functions_starts, functions_ends = slice(code, language=language)
-    # print(functions[-1])
-    # print(functions_starts[-1])
-    # print(functions_ends[-1])
+    language = "c"
+    with open('dataset_final_sorted/CWE-16/c/bad_3582_0') as f:
+        code = f.read()
+    functions, functions_starts, functions_ends = slice(code, language=language)
+    print(functions[-1])
+    print(functions_starts[-1])
+    print(functions_ends[-1])
 
-    filename = 'temp.diff'
-    func1(file_name=filename)
+    # filename = 'temp.diff'
+    # func1(file_name=filename)
     # ----------------------------------------------------------------------------
 
     # language = "c"

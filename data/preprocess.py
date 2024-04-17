@@ -58,12 +58,70 @@ def slice(code, language):
 def func(language, file_name, write_name):  
     count_all = 0
     count_not = 0
-    # open a json meta-file that each line represent a json file
+    # open a jsonl file that each line represent a json object
     with open(file_name, "r", encoding = "utf-8") as r:
-    #     content = r.readlines()
-    #     for idx in range(len(content)):
-    #         # load each json file
-    #         record_dict = json.loads(content[idx])
+        content = r.readlines()
+        # traverse each object
+        for idx in range(len(content)):
+            record_dict = json.loads(content[idx])
+            code_before_patched = record_dict['before']
+            code_after_patched = record_dict['after']
+            patches = record_dict['patches']
+            pattern = re.compile(r'@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
+            matches = pattern.findall(patches)
+            patch_divided_temp = patches.split('@@')
+
+            patches_divided = []
+            patches_divided_starts = []
+            # count from 1: actually ignore 1st part of the diff file, which is useless in xxx.diff
+            cnt = 1
+            for match in matches:
+                old_start, old_lines, new_start, new_lines = match[0], match[1], int(match[2]), match[3]
+                patches_divided_starts.append(new_start)
+                # incorporate a wholt patch
+                patches_divided.append( '@@ ' + patch_divided_temp[cnt] + ' @@' + patch_divided_temp[cnt+1])
+                cnt += 2
+            
+            # print(record_dict['cwe'] + record_dict['cwe_id'])
+            # print(patches_divided[0])
+            # return
+
+            functions, functions_starts, functions_ends = slice(code_before_patched['code'], language)
+
+            print(functions)
+
+            return
+
+            # functions_patchs = []
+            # functions_patchs_remain = []
+            # patches_divided_label = [0] * len(patches_divided)
+            # # for each function
+            # for i in range(len(functions_starts)):
+            #     function_temp = ''
+            #     patch_temp = ''
+            #     # for each patch
+            #     for j in range(len(patches_divided_starts)):
+            #         max = 0
+            #         # patch[j] close to this func[i]
+            #         if patches_divided_starts[j] >= functions_starts[i]-5 and patches_divided_starts[j] <= functions_ends[i]+5:
+            #             # max: the max len of function in file
+            #             if functions_ends[i] - functions_starts[i] > max:
+            #                 max = functions_ends[i] - functions_starts[i]
+            #                 function_temp = functions[i]
+            #             # union patches close to func?
+            #             if patches_divided_label[j] == 0:
+            #                 patch_temp = patch_temp + patches_divided[j]
+            #                 patches_divided_label[j] = 1
+
+            #     if function_temp != '' and patch_temp != '':
+            #         function_patch = {}
+            #         function_patch['function'] = function_temp
+            #         function_patch['patch'] = patch_temp
+            #         functions_patchs.append(function_patch)
+            #         print(function_patch)
+            #         return
+
+
     #         # details include attribute like: code, patch
     #         details = record_dict['details']
     #         for idx1, detail in enumerate(details):
@@ -138,20 +196,24 @@ def func(language, file_name, write_name):
 
 
 class FileEntry:
-    def __init__(self, file_idx, before, after, patches, language):
+    def __init__(self, file_idx, before, after, patches, language, cwe, cwe_id):
         self.file_idx = file_idx
         self.before = before
         self.after = after
         self.patches = patches
         self.language = language
+        self.cwe = cwe
+        self.cwe_id = cwe_id
     
     def to_dict(self):
         return {
             "file_idx": self.file_idx, 
-            "before": self.before,
+            "before": self.before,              # ['code', 'file_label']
             "after": self.after,
             "patches": self.patches,
-            "language": self.language
+            "language": self.language,
+            "cwe": self.cwe,
+            "cwe_id": self.cwe_id
         }
 
 
@@ -163,20 +225,23 @@ def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
     """
     js = []
     file_idx = 0
-
+    pattern = r"CWE-\d+"
     for root, dirs, files in os.walk(root_folder):
         if language in dirs:
             sub_foler_path = os.path.join(root, language)
             for sub_root, sub_dirs, sub_files in os.walk(sub_foler_path):
+                cwe = re.findall(pattern, sub_root)
                 for file in sub_files:
                     if 'bad' in file:
+                        cwe_id = file.replace('bad', '')
+
                         # process file without patches
                         before = {}
                         file_before_path = os.path.join(sub_root, file)
                         with open(file_before_path, 'r') as f:
                             content = f.read()
                             before['code'] = content
-                            before['label'] = 1
+                            before['file_label'] = 1
 
                         # preprocess file with patches
                         after = {}
@@ -184,7 +249,7 @@ def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
                         with open(file_after_path, 'r') as f:
                             content = f.read()
                             after['code'] = content
-                            after['label'] = 0
+                            after['file_label'] = 0
 
                         # get patches
                         file_patch_path = file_after_path.replace('good', '') + '.diff'
@@ -192,21 +257,37 @@ def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
                             results = subprocess.run(["diff", "-u", file_before_path, file_after_path], capture_output=True, text=True)
                             patches = results.stdout
 
-                        js.append(FileEntry(file_idx, before, after, patches, language).to_dict())
+                        if len(cwe) > 0:
+                            js.append(FileEntry(file_idx, before, after, patches, language, cwe[0], cwe_id).to_dict())
+                        else:
+                            js.append(FileEntry(file_idx, before, after, patches, language, 'None', cwe_id).to_dict())
                         file_idx += 1
 
     with open(output_dir, 'w') as f:
-        json.dump(js, f)
+        for data in js:
+            json.dump(data, f)
+            f.write('\n')
+        # json.dump(js, f)
     print('collect {} pairs of good/bad files from {}'.format(file_idx+1, language))
 
 
 if __name__ == '__main__':
-    # root_folder = './dataset_final_sorted'
+    root_folder = './dataset_final_sorted'
     # for language in ['c', 'cpp', 'py']:
-    #     output_dir = language + '_with_patches.json'
-    #     copy_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=output_dir)
+    for language in ['cpp']:
+        output_dir = language + '_with_patches.jsonl'
+        copy_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=output_dir)
 
-    language = 'cpp'
-    file_name = 'cpp_with_patches.json'
-    output = 'cpp_divided.json'
-    func(language, file_name, output)
+    # language = 'c'
+    # file_name = 'c_with_patches.jsonl'
+
+    # --------------test-------------------------
+    # with open(file_name, 'r') as f:
+    #     line = f.readline()
+    #     js = json.loads(line)
+
+    # print(js)
+    # --------------------------------------------
+        
+    # output = 'c_divided.jsonl'
+    # func(language, file_name, output)
