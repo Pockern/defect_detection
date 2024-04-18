@@ -4,9 +4,9 @@ saved_models/
 
 __pycache__/
 
-*.json
-
 *.jsonl
+
+*.json
 
 *.zip
 
