@@ -12,10 +12,12 @@ __pycache__/
 
 *.log
 
-data/vendor/
+vendor/
 
-data/dataset_final_sorted
+dataset_final_sorted/
 
 data/parser
 
 reveal/
+
+vendor/

@@ -1,0 +1,1 @@
+python ../evaluator/evaluator.py -a ../dataset/test.jsonl -p saved_models/predictions.txt
