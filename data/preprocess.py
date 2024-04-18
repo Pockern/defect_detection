@@ -3,6 +3,9 @@ import os
 from tree_sitter import Language, Parser
 import re
 import subprocess
+import warnings
+
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 # 构筑语言模块
 # Language.build_library(
@@ -14,6 +17,78 @@ import subprocess
 #     ]
 # )
 
+
+class FileEntry:
+    def __init__(self, file_idx, before, after, patches, language, cwe, cwe_id):
+        self.file_idx = file_idx
+        self.before = before
+        self.after = after
+        self.patches = patches
+        self.language = language
+        self.cwe = cwe
+        self.cwe_id = cwe_id
+    
+    def to_dict(self):
+        return {
+            "file_idx": self.file_idx, 
+            "before": self.before,              # ['file_code', 'file_label']
+            "after": self.after,                # ['file_code', 'file_label']
+            "patches": self.patches,
+            "language": self.language,
+            "cwe": self.cwe,
+            "cwe_id": self.cwe_id
+            # "functions_before_patches"        # list of FunctionEntry
+            # "functions_after_patches"
+        }
+
+
+class FunctionEntry:
+    def __init__(self, function_idx, function_code, function_label, bag_label):
+        self.function_idx = function_idx
+        self.function_code = function_code
+        self.function_label = function_label
+        self.bag_label = bag_label
+    
+    def to_dict(self):
+        return {
+            "function_idx": self.function_idx, 
+            "function_code": self.function_code,
+            "function_label": self.function_label,
+            "bag_label": self.bag_label
+        }
+
+
+def remove_comment(code, language):
+    """
+    remove all none-code part like comment from code
+    :param code: code with comments and so on
+    :param language: language of code
+    :return: cleaned code
+    """
+    if language == 'py':
+        language = 'python'
+
+    # 加载语言模块
+    LANGUAGE = Language('parser/languages.so', language)
+
+    parser = Parser()
+    parser.set_language(LANGUAGE)
+    code = code.encode()
+    tree = parser.parse(code)
+    root_node = tree.root_node
+
+    # 层次遍历
+    stack = [root_node]
+    while stack:
+        node = stack.pop()
+        if node.type == 'comment':
+            code = code[:node.start_byte] + code[node.end_byte:]
+        else: 
+            stack.extend(node.children)
+
+    return code.decode()
+
+
 def slice(code, language):
     """
     divide code into multiple functions
@@ -21,6 +96,9 @@ def slice(code, language):
     :param language: the PL of code
     :return: list of divided functions, list of function_starts, list of functions_ends
     """
+    if language == 'py':
+        language = 'python'
+
     # 加载语言模块
     LANGUAGE = Language('parser/languages.so', language)
 
@@ -55,169 +133,87 @@ def slice(code, language):
     return functions, functions_starts, functions_ends
 
 
-def func(language, file_name, write_name):  
-    count_all = 0
-    count_not = 0
+def get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts):
+    """
+    give label of vulnerablity function (only for code before patched)
+    """
+    functions_label = [0] * len(functions_starts)
+    # for each function
+    for i in range(len(functions_starts)):
+        function_temp = ''
+        patch_temp = ''
+        # for each patch
+        for j in range(len(patches_divided_starts)):
+            # patch[j] close to this func[i]
+            if patches_divided_starts[j] >= functions_starts[i]-1 and patches_divided_starts[j] <= functions_ends[i]+1:
+                # union patches close to func?
+                if functions_label[i] == 0:
+                    functions_label[i] = 1
+
+    return functions_label
+
+
+def func(language, file_name, output_dir):
     # open a jsonl file that each line represent a json object
     with open(file_name, "r", encoding = "utf-8") as r:
         content = r.readlines()
-        # traverse each object
+        output = []
+        # traverse each object of jsonl
         for idx in range(len(content)):
-            record_dict = json.loads(content[idx])
-            code_before_patched = record_dict['before']
-            code_after_patched = record_dict['after']
-            patches = record_dict['patches']
+            object_dict = json.loads(content[idx])
+
+            code_before_patched = object_dict['before']
+            code_after_patched = object_dict['after']
+            
+            # divide patches
+            patches = object_dict['patches']
             pattern = re.compile(r'@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
             matches = pattern.findall(patches)
             patch_divided_temp = patches.split('@@')
-
             patches_divided = []
             patches_divided_starts = []
             # count from 1: actually ignore 1st part of the diff file, which is useless in xxx.diff
             cnt = 1
             for match in matches:
-                old_start, old_lines, new_start, new_lines = match[0], match[1], int(match[2]), match[3]
-                patches_divided_starts.append(new_start)
-                # incorporate a wholt patch
+                old_start, old_lines, new_start, new_lines = int(match[0]), match[1], int(match[2]), match[3]
+                patches_divided_starts.append(old_start)
+                # incorporate a whole patch
                 patches_divided.append( '@@ ' + patch_divided_temp[cnt] + ' @@' + patch_divided_temp[cnt+1])
                 cnt += 2
+        
+            # divide functions
+            # bad
+            functions, functions_starts, functions_ends = slice(code_before_patched['file_code'], language)
+
+            # -------------------test------------------------------------------------------------
+            if object_dict['cwe'] == 'CWE-190' and object_dict['cwe_id'] == '_582_1':
+                print(functions_starts)
+                print(functions_ends)
+                print(patches_divided_starts)
             
-            # print(record_dict['cwe'] + record_dict['cwe_id'])
-            # print(patches_divided[0])
-            # return
+            # ------------------------------------------------------------------------------------
 
-            functions, functions_starts, functions_ends = slice(code_before_patched['code'], language)
+            functions_label = get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts)
+            functions_object_list = [FunctionEntry(idx, func, label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
+            object_dict['functions_before_patches'] = functions_object_list
+            object_dict['before']['file_code'] = remove_comment(object_dict['before']['file_code'], language)
+            # good
+            functions, functions_starts, functions_ends = slice(code_after_patched['file_code'], language)
+            functions_label = [0] * len(functions)
+            functions_object_list = [FunctionEntry(idx, func, label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
+            object_dict['functions_after_patches'] = functions_object_list
+            object_dict['after']['file_code'] = remove_comment(object_dict['after']['file_code'], language)
 
-            print(functions)
+            output.append(object_dict)
+            # print('divide a pair of file: {}'.format(object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id']))
 
-            return
-
-            # functions_patchs = []
-            # functions_patchs_remain = []
-            # patches_divided_label = [0] * len(patches_divided)
-            # # for each function
-            # for i in range(len(functions_starts)):
-            #     function_temp = ''
-            #     patch_temp = ''
-            #     # for each patch
-            #     for j in range(len(patches_divided_starts)):
-            #         max = 0
-            #         # patch[j] close to this func[i]
-            #         if patches_divided_starts[j] >= functions_starts[i]-5 and patches_divided_starts[j] <= functions_ends[i]+5:
-            #             # max: the max len of function in file
-            #             if functions_ends[i] - functions_starts[i] > max:
-            #                 max = functions_ends[i] - functions_starts[i]
-            #                 function_temp = functions[i]
-            #             # union patches close to func?
-            #             if patches_divided_label[j] == 0:
-            #                 patch_temp = patch_temp + patches_divided[j]
-            #                 patches_divided_label[j] = 1
-
-            #     if function_temp != '' and patch_temp != '':
-            #         function_patch = {}
-            #         function_patch['function'] = function_temp
-            #         function_patch['patch'] = patch_temp
-            #         functions_patchs.append(function_patch)
-            #         print(function_patch)
-            #         return
+    # with open(output_dir, 'w') as f:
+    #     for data in output:
+    #         json.dump(data, f)
+    #         f.write('\n')
 
 
-    #         # details include attribute like: code, patch
-    #         details = record_dict['details']
-    #         for idx1, detail in enumerate(details):
-    #             code = detail['code']
-    #             patch = detail['patch']
-    #             # get some diff parameters
-    #             pattern = re.compile(r'@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
-    #             matches = pattern.findall(patch)
-    #             patch_small_temp = patch.split('@@')
-                
-    #             patch_small = []
-    #             patch_new_starts = []
-
-    #             # 遍历每个匹配并输出修改的代码内容
-    #             # count from 1: actually ignore the head of the file, which is useless in xxx.diff
-    #             cnt = 1
-    #             for match in matches:
-    #                 old_start, old_lines, new_start, new_lines = match[0], match[1], int(match[2]), match[3]
-    #                 patch_new_starts.append(new_start)
-    #                 # patch_small includes each part of new patch by (id? as matches)
-    #                 patch_small.append( '@@ ' + patch_small_temp[cnt] + ' @@' + patch_small_temp[cnt+1])
-    #                 cnt += 2
-
-    #             # divide file-level into function-level
-    #             functions, functions_starts, functions_ends = slice(code, language)
-
-    #             functions_patchs = []
-    #             functions_patchs_remain = []
-    #             patch_small_flag = [0] * len(patch_small)
-    #             # for each function in file
-    #             for i in range(len(functions_starts)):
-    #                 function_temp = ''
-    #                 patch_temp = ''
-    #                 # for each patch in file
-    #                 for j in range(len(patch_new_starts)):
-    #                     max = 0
-    #                     # patch[j] close to this func[i]
-    #                     if patch_new_starts[j] >= functions_starts[i]-5 and patch_new_starts[j] <= functions_ends[i]+5:
-    #                         # max: the max len of function in file
-    #                         if functions_ends[i] - functions_starts[i] > max:
-    #                             max = functions_ends[i] - functions_starts[i]
-    #                             function_temp = functions[i]
-    #                         # union patches close to func?
-    #                         if patch_small_flag[j] == 0:
-    #                             patch_temp = patch_temp + patch_small[j]
-    #                             patch_small_flag[j] = 1
-
-    #                 if function_temp != '' and patch_temp != '':
-    #                     function_patch = {}
-    #                     function_patch['function'] = function_temp
-    #                     function_patch['patch'] = patch_temp
-    #                     functions_patchs.append(function_patch)
-
-    #             # loop num: sizeof(patches)
-    #             for j in range(len(patch_small_flag)):
-    #                 if patch_small_flag[j] == 0:
-    #                     functions_patchs_remain.append(patch_small[j])
-    #             record_dict['details'][idx1]['functions_patchs'] = functions_patchs
-    #             record_dict['details'][idx1]['functions_patchs_remain'] = functions_patchs_remain
-    #             # record_dict['details'][idx1]['functions_starts'] = functions_starts
-    #             # record_dict['details'][idx1]['functions_ends'] = functions_ends
-    #             # record_dict['details'][idx1]['patch_starts'] = patch_new_starts
-    #             if record_dict['details'][idx1]['file_language'] == language:
-    #                 count_all += 1
-    #                 if functions_patchs == []:
-    #                     count_not += 1
-
-    #         with open(write_name, "a", encoding = "utf-8") as rf:
-    #             rf.write(json.dumps(record_dict) + '\n')
-    # print(count_not)
-    # print(count_all)
-
-
-class FileEntry:
-    def __init__(self, file_idx, before, after, patches, language, cwe, cwe_id):
-        self.file_idx = file_idx
-        self.before = before
-        self.after = after
-        self.patches = patches
-        self.language = language
-        self.cwe = cwe
-        self.cwe_id = cwe_id
-    
-    def to_dict(self):
-        return {
-            "file_idx": self.file_idx, 
-            "before": self.before,              # ['code', 'file_label']
-            "after": self.after,
-            "patches": self.patches,
-            "language": self.language,
-            "cwe": self.cwe,
-            "cwe_id": self.cwe_id
-        }
-
-
-def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
+def dump_files_by_language_from_subfolder(root_folder, language, output_dir):
     """
     convert all files of language from root_folder into json
     :param root_folder: destination folder
@@ -236,11 +232,12 @@ def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
                         cwe_id = file.replace('bad', '')
 
                         # process file without patches
+                        # 不能在这里直接消除代码中的注释，否则会和diff指令产生的行号出现偏差（diff的文件是原文件）
                         before = {}
                         file_before_path = os.path.join(sub_root, file)
                         with open(file_before_path, 'r') as f:
                             content = f.read()
-                            before['code'] = content
+                            before['file_code'] = content
                             before['file_label'] = 1
 
                         # preprocess file with patches
@@ -248,14 +245,12 @@ def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
                         file_after_path = file_before_path.replace('bad', 'good')
                         with open(file_after_path, 'r') as f:
                             content = f.read()
-                            after['code'] = content
+                            after['file_code'] = content
                             after['file_label'] = 0
 
                         # get patches
-                        file_patch_path = file_after_path.replace('good', '') + '.diff'
-                        with open(file_patch_path, 'w') as f:
-                            results = subprocess.run(["diff", "-u", file_before_path, file_after_path], capture_output=True, text=True)
-                            patches = results.stdout
+                        results = subprocess.run(["diff", "-u", file_before_path, file_after_path], capture_output=True, text=True)
+                        patches = results.stdout
 
                         if len(cwe) > 0:
                             js.append(FileEntry(file_idx, before, after, patches, language, cwe[0], cwe_id).to_dict())
@@ -271,23 +266,30 @@ def copy_files_by_language_from_subfolder(root_folder, language, output_dir):
     print('collect {} pairs of good/bad files from {}'.format(file_idx+1, language))
 
 
-if __name__ == '__main__':
-    root_folder = './dataset_final_sorted'
-    # for language in ['c', 'cpp', 'py']:
-    for language in ['cpp']:
+def main():
+    root_folder = 'dataset_final_sorted'
+    for language in ['c', 'cpp', 'py']:
         output_dir = language + '_with_patches.jsonl'
-        copy_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=output_dir)
+        dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=output_dir)
 
-    # language = 'c'
-    # file_name = 'c_with_patches.jsonl'
+    for language in ['c', 'cpp', 'py']:
+        file_name = language + '_with_patches.jsonl'
+        output = language + '_divided.jsonl'
+        func(language, file_name, output)
 
-    # --------------test-------------------------
-    # with open(file_name, 'r') as f:
-    #     line = f.readline()
-    #     js = json.loads(line)
 
-    # print(js)
-    # --------------------------------------------
-        
-    # output = 'c_divided.jsonl'
-    # func(language, file_name, output)
+def test():
+    """
+    仅用作测试各种特殊情况
+    """
+    file_path = 'dataset_final_sorted/CWE-190/cpp/bad_582_1'
+    with open(file_path, 'r') as f:
+        content = f.read()
+    functions, functions_start, functions_end = slice(content, 'cpp')
+    print(functions_start)
+    print(functions_end)
+
+
+if __name__ == '__main__':
+    # main()
+    test()
