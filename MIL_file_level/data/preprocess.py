@@ -201,7 +201,7 @@ def func(language, file_name, output_dir):
             # good
             functions, functions_starts, functions_ends = slice(code_after_patched['file_code'], language)
             functions_label = [0] * len(functions)
-            functions_object_list = [FunctionEntry(idx, func, label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
+            functions_object_list = [FunctionEntry(idx, func, label, 0).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_after_patches'] = functions_object_list
             object_dict['after']['file_code'] = remove_comment(object_dict['after']['file_code'], language)
 
@@ -315,14 +315,14 @@ def main():
     root_folder = 'dataset_final_sorted'
     language_list = ['c', 'cpp', 'py']
 
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+    for language in language_list:
+        file_name = language + '_divided.jsonl'
+        dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
 
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     output = file_name
-    #     func(language, file_name, output)
+    for language in language_list:
+        file_name = language + '_divided.jsonl'
+        output = file_name
+        func(language, file_name, output)
 
     for language in language_list:
         file_name = language + '_divided.jsonl'

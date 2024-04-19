@@ -10,10 +10,27 @@ class Model(nn.Module):
         self.tokenizer = tokenizer
         self.args = args
 
-        self.dropout = nn.Dropout(args.dropout_probability)
+        # self.dropout = nn.Dropout(args.dropout_probability)
 
-    def forward(self, input_ids=None, labels=None):
+    def forward(self, input_functions_ids=None, functions_labels=None, file_label=None):
         # 1 为 padding，需要mask忽略
+
+        print(input_functions_ids)
+        print(input_functions_ids.shape)
+        print(functions_labels)
+        print(functions_labels.shape)
+        print(file_label)
+        outputs = self.encoder(input_functions_ids[0], attention_mask=input_functions_ids[0].ne(1))
+        print(input_functions_ids[0].shape)
+        print(dir(outputs))
+        outputs_last = outputs.last_hidden_state
+        outputs_pooler = outputs.pooler_output
+        print(outputs_last)
+        print(outputs_last.shape)
+        print(outputs_pooler)
+        print(outputs_pooler.shape)
+        exit(0)
+
         outputs = self.encoder(input_ids, attention_mask=input_ids.ne(1))[0]
         outputs = self.dropout(outputs)
 

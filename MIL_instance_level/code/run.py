@@ -10,7 +10,7 @@ import warnings
 from model import Model
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
-from transformers import (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer, AdamW,
+from transformers import (RobertaConfig, RobertaModel, RobertaTokenizer, AdamW,
                           get_linear_schedule_with_warmup) 
 
 # init logger
@@ -19,12 +19,13 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 # class to shape training input features
 class InputFeatures(object):
-    def __init__(self, input_tokens, input_ids, file_idx, label):
-        # TODO
-        self.input_tokens = input_tokens
-        self.input_ids = input_ids
-        self.idx = file_idx
-        self.label = label
+    def __init__(self, input_functions_tokens, input_functions_ids, functions_idx, functions_labels, file_labels, file_idx):
+        self.input_functions_tokens = input_functions_tokens
+        self.input_functions_ids = input_functions_ids
+        self.functions_idx = functions_idx
+        self.functions_labels = functions_labels
+        self.file_labels = file_labels
+        self.file_idx = file_idx
 
 
 def convert_examples_to_features(object, tokenizer, args, file_key):
@@ -32,19 +33,34 @@ def convert_examples_to_features(object, tokenizer, args, file_key):
     convert obj of json file to features that model needs
     :return: inputfeatures
     """
-    if file_key == 'before':
+    if file_key == 'functions_before_patches':
         file_type = 'bad'
     else:
         file_type = 'good'
-    code = ' '.join(object[file_key]['file_code'].split())
-    code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
-    source_tokens = [tokenizer.cls_token]+code_tokens+[tokenizer.sep_token]
-    source_ids =  tokenizer.convert_tokens_to_ids(source_tokens)
-    padding_length = args.block_size - len(source_ids)
-    source_ids += [tokenizer.pad_token_id]*padding_length
-    return InputFeatures(source_tokens, source_ids, 
-                         object['cwe']+'/'+object['language']+'/'+file_type+object['cwe_id'], 
-                         object[file_key]['file_label'])
+    
+    input_functions_tokens = []
+    input_functions_ids = []
+    functions_idx = []
+    functions_labels = []
+    file_labels = []
+    file_idx = object['cwe'] + '/' + object['language'] + '/' + file_type + object['cwe_id']
+
+    functions = object[file_key]
+    for function in functions:
+        code = ' '.join(function['function_code'].split())
+        code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
+        source_tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.sep_token]
+        source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
+        padding_length = args.block_size - len(source_ids)
+        source_ids += [tokenizer.pad_token_id] * padding_length
+
+        input_functions_tokens.append(source_tokens)
+        input_functions_ids.append(source_ids)
+        functions_idx.append(function['function_idx'])
+        functions_labels.append(function['function_label'])
+        file_labels.append(function['bag_label'])
+
+    return InputFeatures(input_functions_tokens, input_functions_ids, functions_idx, functions_labels, file_labels, file_idx)
 
 
 # dataset class for get features from file with notification
@@ -54,22 +70,23 @@ class TextDataset(Dataset):
         with open(file_path) as f:
             for line in f:
                 js = json.loads(line.strip())
-                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'before'))
-                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'after'))
+                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_before_patches'))
+                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_after_patches'))
         if 'train' in file_path:
             for idx, example in enumerate(self.examples[:2]):
                     logger.info("*** Example ***")
-                    logger.info("idx: {}".format(idx))
-                    logger.info("file_id: {}".format(example.idx))
-                    logger.info("label: {}".format(example.label))
-                    logger.info("input_tokens: {}".format([x.replace('\u0120','_') for x in example.input_tokens]))
-                    logger.info("input_ids: {}".format(' '.join(map(str, example.input_ids))))
+                    logger.info("file_id: {}".format(example.file_idx))
+                    logger.info('file labels: {}'.format(example.file_labels[0]))
+                    logger.info("number of functions: {}".format(len(example.functions_idx)))
+                    logger.info("function labels: {}".format(example.functions_labels))
+                    logger.info("first function tokens: {}".format([x.replace('\u0120','_') for x in example.input_functions_tokens[0]]))
+                    logger.info("first function ids: {}".format(' '.join(map(str, example.input_functions_ids[0]))))
     
     def __len__(self):
         return len(self.examples)
     
     def __getitem__(self, index):
-        return torch.tensor(self.examples[index].input_ids), torch.tensor(self.examples[index].label)
+        return torch.tensor(self.examples[index].input_functions_ids), torch.tensor(self.examples[index].functions_labels), torch.tensor(self.examples[index].file_labels)
 
 
 def set_seed(seed=42):
@@ -125,7 +142,7 @@ def train(args, train_dataset, model, tokenizer):
     logger.info("***** Running training *****")
     logger.info("  Num examples = %d", len(train_dataset))
     logger.info("  Num Epochs = %d", args.epoch)
-    logger.info("  Instantaneous batch size per GPU = %d", args.per_gpu_train_batch_size)
+    logger.info("  Batch size = %d", args.train_batch_size)
     logger.info("  Total train batch size = %d", args.train_batch_size * args.gradient_accumulation_steps)
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", args.max_steps)
@@ -140,11 +157,13 @@ def train(args, train_dataset, model, tokenizer):
         tr_num = 0
         train_loss = 0
         for step, batch in enumerate(bar):
-            inputs = batch[0].to(args.device)
-            labels = batch[1].to(args.device)
+            # TODO
+            functions_inputs = batch[0].to(args.device)
+            functions_labels = batch[1].to(args.device)
+            file_label = batch[2].to(args.device)
 
             model.train()
-            loss, logits = model(inputs, labels)
+            loss, logits = model(functions_inputs, functions_labels, file_label)
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -220,13 +239,15 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     labels=[]
 
     for batch in eval_dataloader:
-        inputs = batch[0].to(args.device)        
-        label = batch[1].to(args.device) 
+        # TODO
+        functions_inputs = batch[0].to(args.device)
+        functions_labels = batch[1].to(args.device)
+        file_label = batch[2].to(args.device)
         with torch.no_grad():
-            lm_loss, logit = model(inputs, label)
+            lm_loss, logit = model(functions_inputs, functions_labels, file_label)
             eval_loss += lm_loss.mean().item()
             logits.append(logit.cpu().numpy())
-            labels.append(label.cpu().numpy())
+            # labels.append(label.cpu().numpy())
         nb_eval_steps += 1
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
@@ -262,8 +283,9 @@ def test(args, model, tokenizer):
     labels=[]
 
     for batch in tqdm(test_dataloader, total=len(test_dataloader)):
+        # TODO
         inputs = batch[0].to(args.device)        
-        label = batch[1].to(args.device) 
+        label = batch[1].to(args.device)
         with torch.no_grad():
             logit = model(inputs)
             logits.append(logit.cpu().numpy())
@@ -345,10 +367,6 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
     args.n_gpu = torch.cuda.device_count()
-    args.per_gpu_train_batch_size = args.train_batch_size // args.n_gpu
-    args.per_gpu_eval_batch_size = args.eval_batch_size // args.n_gpu
-    logger.info("device: %s, n_gpu: %s, per_gpu_train_batch_size: %s, per_gpu_eval_batch_size:%s", 
-                device, args.n_gpu, args.per_gpu_train_batch_size, args.per_gpu_eval_batch_size)    
 
     # setup logging
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -377,10 +395,7 @@ def main():
     # load pretrained model, config and tokenizer
     tokenizer = RobertaTokenizer.from_pretrained(args.model_name_or_path)
     config = RobertaConfig.from_pretrained(args.model_name_or_path)
-    # Classification tasks: 
-    config.num_labels = 1
-    # model = RobertaModel.from_pretrained(args.model_name_or_path)
-    model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path)
+    model = RobertaModel.from_pretrained(args.model_name_or_path)
 
     model = Model(model, config, tokenizer, args)
 
