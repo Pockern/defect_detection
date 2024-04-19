@@ -1,0 +1,121 @@
+04/18/2024 21:12:39 - WARNING - __main__ -   Process rank: -1, device: cuda, n_gpu: 2, distributed training: False, 16-bits training: False
+Some weights of RobertaForSequenceClassification were not initialized from the model checkpoint at ../../huggingface_models/microsoft/codebert-base/ and are newly initialized: ['classifier.dense.bias', 'classifier.dense.weight', 'classifier.out_proj.bias', 'classifier.out_proj.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+04/18/2024 21:12:40 - INFO - __main__ -   Training/evaluation parameters Namespace(train_data_file='../dataset/train.jsonl', output_dir='./saved_models', eval_data_file='../dataset/valid.jsonl', test_data_file='../dataset/test.jsonl', model_type='roberta', model_name_or_path='../../huggingface_models/microsoft/codebert-base/', mlm=False, mlm_probability=0.15, config_name='', tokenizer_name='../../huggingface_models/microsoft/codebert-base/', cache_dir='', block_size=400, do_train=True, do_eval=False, do_test=False, evaluate_during_training=True, do_lower_case=False, train_batch_size=32, eval_batch_size=64, gradient_accumulation_steps=1, learning_rate=2e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, num_train_epochs=1.0, max_steps=-1, warmup_steps=0, logging_steps=50, save_steps=50, save_total_limit=None, eval_all_checkpoints=False, no_cuda=False, overwrite_output_dir=False, overwrite_cache=False, seed=123456, epoch=5, fp16=False, fp16_opt_level='O1', local_rank=-1, server_ip='', server_port='', early_stopping_patience=None, min_loss_delta=0.001, dropout_probability=0, n_gpu=2, device=device(type='cuda'), per_gpu_train_batch_size=16, per_gpu_eval_batch_size=32, start_epoch=0, start_step=0)
+04/18/2024 21:13:30 - INFO - __main__ -   *** Example ***
+04/18/2024 21:13:30 - INFO - __main__ -   idx: 0
+04/18/2024 21:13:30 - INFO - __main__ -   label: 0
+04/18/2024 21:13:30 - INFO - __main__ -   input_tokens: ['<s>', 'static', '_av', '_', 'cold', '_int', '_v', 'd', 'ade', 'c', '_', 'init', '(', 'AV', 'Cod', 'ec', 'Context', '_*', 'av', 'ctx', ')', '_{', '_V', 'D', 'AD', 'ec', 'oder', 'Context', '_*', 'ctx', '_=', '_av', 'ctx', '->', 'priv', '_', 'data', ';', '_struct', '_v', 'da', '_', 'context', '_*', 'v', 'da', '_', 'ctx', '_=', '_&', 'ctx', '->', 'v', 'da', '_', 'ctx', ';', '_OS', 'Status', '_status', ';', '_int', '_ret', ';', '_c', 'tx', '->', 'h', '264', '_', 'initialized', '_=', '_0', ';', '_/*', '_init', '_p', 'ix', '_', 'fm', 'ts', '_of', '_codec', '_*/', '_if', '_(!', 'ff', '_', 'h', '264', '_', 'v', 'da', '_', 'dec', 'oder', '.', 'p', 'ix', '_', 'fm', 'ts', ')', '_{', '_if', '_(', 'k', 'C', 'FC', 'ore', 'Found', 'ation', 'Version', 'Number', '_<', '_k', 'C', 'FC', 'ore', 'Found', 'ation', 'Version', 'Number', '10', '_', '7', ')', '_ff', '_', 'h', '264', '_', 'v', 'da', '_', 'dec', 'oder', '.', 'p', 'ix', '_', 'fm', 'ts', '_=', '_v', 'da', '_', 'p', 'ix', 'fm', 'ts', '_', 'pri', 'or', '_', '10', '_', '7', ';', '_else', '_ff', '_', 'h', '264', '_', 'v', 'da', '_', 'dec', 'oder', '.', 'p', 'ix', '_', 'fm', 'ts', '_=', '_v', 'da', '_', 'p', 'ix', 'fm', 'ts', ';', '_}', '_/*', '_init', '_v', 'da', '_*/', '_mem', 'set', '(', 'v', 'da', '_', 'ctx', ',', '_0', ',', '_sizeof', '(', 'struct', '_v', 'da', '_', 'context', '));', '_v', 'da', '_', 'ctx', '->', 'width', '_=', '_av', 'ctx', '->', 'width', ';', '_v', 'da', '_', 'ctx', '->', 'height', '_=', '_av', 'ctx', '->', 'height', ';', '_v', 'da', '_', 'ctx', '->', 'format', '_=', "_'", 'av', 'c', '1', "';", '_v', 'da', '_', 'ctx', '->', 'use', '_', 'sync', '_', 'dec', 'oding', '_=', '_1', ';', '_v', 'da', '_', 'ctx', '->', 'use', '_', 'ref', '_', 'buffer', '_=', '_1', ';', '_c', 'tx', '->', 'p', 'ix', '_', 'f', 'mt', '_=', '_av', 'ctx', '->', 'get', '_', 'format', '(', 'av', 'ctx', ',', '_av', 'ctx', '->', 'cod', 'ec', '->', 'p', 'ix', '_', 'fm', 'ts', ');', '_switch', '_(', 'ctx', '->', 'p', 'ix', '_', 'f', 'mt', ')', '_{', '_case', '_AV', '_', 'P', 'IX', '_', 'F', 'MT', '_', 'U', 'Y', 'V', 'Y', '422', ':', '_v', 'da', '_', 'ctx', '->', 'cv', '_', 'p', 'ix', '_', 'f', 'mt', '_', 'type', '_=', "_'", '2', 'v', 'uy', "';", '_break', ';', '_case', '_AV', '_', 'P', 'IX', '_', 'F', 'MT', '_', 'Y', 'U', 'Y', 'V', '422', ':', '_v', 'da', '_', 'ctx', '->', 'cv', '_', 'p', 'ix', '_', 'f', 'mt', '_', 'type', '_=', "_'", 'yu', 'vs', "';", '_break', ';', '_case', '_AV', '_', 'P', 'IX', '_', 'F', 'MT', '_', 'NV', '12', ':', '</s>']
+04/18/2024 21:13:30 - INFO - __main__ -   input_ids: 0 42653 6402 1215 33912 6979 748 417 1829 438 1215 25153 1640 10612 47436 3204 48522 1009 1469 49575 43 25522 468 495 2606 3204 15362 48522 1009 49575 5457 6402 49575 46613 25943 1215 23687 131 29916 748 6106 1215 46796 1009 705 6106 1215 49575 5457 359 49575 46613 705 6106 1215 49575 131 8192 47731 2194 131 6979 5494 131 740 43820 46613 298 29137 1215 49722 5457 321 131 48565 45511 181 3181 1215 40523 1872 9 45797 48404 114 48209 3145 1215 298 29137 1215 705 6106 1215 11127 15362 4 642 3181 1215 40523 1872 43 25522 114 36 330 347 5268 1688 29991 1258 47322 43623 28696 449 347 5268 1688 29991 1258 47322 43623 698 1215 406 43 48400 1215 298 29137 1215 705 6106 1215 11127 15362 4 642 3181 1215 40523 1872 5457 748 6106 1215 642 3181 40523 1872 1215 13718 368 1215 698 1215 406 131 1493 48400 1215 298 29137 1215 705 6106 1215 11127 15362 4 642 3181 1215 40523 1872 5457 748 6106 1215 642 3181 40523 1872 131 35524 48565 45511 748 6106 48404 26012 8738 1640 705 6106 1215 49575 6 321 6 49907 1640 25384 748 6106 1215 46796 48749 748 6106 1215 49575 46613 36097 5457 6402 49575 46613 36097 131 748 6106 1215 49575 46613 37009 5457 6402 49575 46613 37009 131 748 6106 1215 49575 46613 34609 5457 128 1469 438 134 23500 748 6106 1215 49575 46613 3698 1215 45176 1215 11127 19519 5457 112 131 748 6106 1215 49575 46613 3698 1215 13043 1215 47438 5457 112 131 740 43820 46613 642 3181 1215 506 16100 5457 6402 49575 46613 6460 1215 34609 1640 1469 49575 6 6402 49575 46613 29659 3204 46613 642 3181 1215 40523 1872 4397 5405 36 49575 46613 642 3181 1215 506 16100 43 25522 403 17307 1215 510 9482 1215 597 11674 1215 791 975 846 975 37319 35 748 6106 1215 49575 46613 38635 1215 642 3181 1215 506 16100 1215 12528 5457 128 176 705 5781 23500 1108 131 403 17307 1215 510 9482 1215 597 11674 1215 975 791 975 846 37319 35 748 6106 1215 49575 46613 38635 1215 642 3181 1215 506 16100 1215 12528 5457 128 29159 15597 23500 1108 131 403 17307 1215 510 9482 1215 597 11674 1215 31668 1092 35 2
+04/18/2024 21:13:30 - INFO - __main__ -   *** Example ***
+04/18/2024 21:13:30 - INFO - __main__ -   idx: 1
+04/18/2024 21:13:30 - INFO - __main__ -   label: 0
+04/18/2024 21:13:30 - INFO - __main__ -   input_tokens: ['<s>', 'static', '_int', '_trans', 'code', '(', 'AV', 'Format', 'Context', '_**', 'output', '_', 'files', ',', '_int', '_n', 'b', '_', 'output', '_', 'files', ',', '_Input', 'File', '_*', 'input', '_', 'files', ',', '_int', '_n', 'b', '_', 'input', '_', 'files', ',', '_Stream', 'Map', '_*', 'stream', '_', 'maps', ',', '_int', '_n', 'b', '_', 'stream', '_', 'maps', ')', '_{', '_int', '_ret', '_=', '_0', ',', '_i', ',', '_j', ',', '_k', ',', '_n', ',', '_n', 'b', '_', 'ost', 'ream', 's', '_=', '_0', ',', '_step', ';', '_AV', 'Format', 'Context', '_*', 'is', ',', '_*', 'os', ';', '_AV', 'Cod', 'ec', 'Context', '_*', 'cod', 'ec', ',', '_*', 'ic', 'od', 'ec', ';', '_Output', 'Stream', '_*', 'ost', ',', '_**', 'ost', '_', 'table', '_=', '_NULL', ';', '_Input', 'Stream', '_*', 'ist', ';', '_char', '_error', '[', '1024', '];', '_int', '_key', ';', '_int', '_want', '_', 'sd', 'p', '_=', '_1', ';', '_uint', '8', '_', 't', '_no', '_', 'pack', 'et', '[', 'MAX', '_', 'FIL', 'ES', ']=', '{', '0', '};', '_int', '_no', '_', 'pack', 'et', '_', 'count', '=', '0', ';', '_int', '_n', 'b', '_', 'frame', '_', 'th', 'reshold', '[', 'AV', 'MED', 'IA', '_', 'TYPE', '_', 'NB', ']=', '{', '0', '};', '_int', '_n', 'b', '_', 'stream', 's', '[', 'AV', 'MED', 'IA', '_', 'TYPE', '_', 'NB', ']=', '{', '0', '};', '_if', '_(', 'rate', '_', 'em', 'u', ')', '_for', '_(', 'i', '_=', '_0', ';', '_i', '_<', '_n', 'b', '_', 'input', '_', 'stream', 's', ';', '_i', '++)', '_input', '_', 'stream', 's', '[', 'i', '].', 'start', '_=', '_av', '_', 'get', 'time', '();', '_/*', '_output', '_stream', '_init', '_*/', '_n', 'b', '_', 'ost', 'ream', 's', '_=', '_0', ';', '_for', '(', 'i', '=', '0', ';', 'i', '<', 'nb', '_', 'output', '_', 'files', ';', 'i', '++)', '_{', '_os', '_=', '_output', '_', 'files', '[', 'i', '];', '_if', '_(!', 'os', '->', 'nb', '_', 'stream', 's', '_&&', '_!', '(', 'os', '->', 'o', 'format', '->', 'flags', '_&', '_AV', 'F', 'MT', '_', 'N', 'OST', 'REAM', 'S', '))', '_{', '_av', '_', 'dump', '_', 'format', '(', 'output', '_', 'files', '[', 'i', '],', '_i', ',', '_output', '_', 'files', '[', 'i', ']', '->', 'filename', ',', '_1', ');', '_f', 'printf', '(', 'st', 'der', 'r', ',', '_"', 'Output', '_file', '_#', '%', 'd', '_does', '_not', '_contain', '_any', '_stream', '\\', 'n', '",', '_i', ');', '_ret', '_=', '_A', 'VER', 'ROR', '(', 'E', 'IN', 'VAL', ');', '_goto', '_fail', ';', '_}', '_n', 'b', '_', 'ost', 'ream', 's', '_+=', '_os', '->', 'nb', '_', 'stream', 's', ';', '_}', '_if', '_(', 'nb', '_', 'stream', '_', 'maps', '_>', '_0', '_&&', '_n', 'b', '_', 'stream', '_', 'maps', '_!=', '_n', 'b', '</s>']
+04/18/2024 21:13:30 - INFO - __main__ -   input_ids: 0 42653 6979 6214 20414 1640 10612 48587 48522 13540 46234 1215 42018 6 6979 295 428 1215 46234 1215 42018 6 41327 9966 1009 46797 1215 42018 6 6979 295 428 1215 46797 1215 42018 6 16183 41151 1009 8656 1215 44754 6 6979 295 428 1215 8656 1215 44754 43 25522 6979 5494 5457 321 6 939 6 1236 6 449 6 295 6 295 428 1215 2603 26930 29 5457 321 6 1149 131 17307 48587 48522 1009 354 6 1009 366 131 17307 47436 3204 48522 1009 29659 3204 6 1009 636 1630 3204 131 38252 36757 1009 2603 6 13540 2603 1215 14595 5457 48955 131 41327 36757 1009 661 131 16224 5849 10975 47477 44082 6979 762 131 6979 236 1215 28045 642 5457 112 131 49315 398 1215 90 117 1215 12486 594 10975 30187 1215 46008 1723 49659 45152 288 49423 6979 117 1215 12486 594 1215 11432 5214 288 131 6979 295 428 1215 26061 1215 212 45749 10975 10612 32653 2889 1215 48710 1215 20485 49659 45152 288 49423 6979 295 428 1215 8656 29 10975 10612 32653 2889 1215 48710 1215 20485 49659 45152 288 49423 114 36 7954 1215 991 257 43 13 36 118 5457 321 131 939 28696 295 428 1215 46797 1215 8656 29 131 939 49346 8135 1215 8656 29 10975 118 8174 13124 5457 6402 1215 6460 958 47006 48565 4195 4615 45511 48404 295 428 1215 2603 26930 29 5457 321 131 13 1640 118 5214 288 131 118 41552 40460 1215 46234 1215 42018 131 118 49346 25522 11988 5457 4195 1215 42018 10975 118 44082 114 48209 366 46613 40460 1215 8656 29 48200 27785 1640 366 46613 139 34609 46613 46760 359 17307 597 11674 1215 487 13556 28057 104 35122 25522 6402 1215 46593 1215 34609 1640 46234 1215 42018 10975 118 7479 939 6 4195 1215 42018 10975 118 742 46613 49451 6 112 4397 856 49775 1640 620 3624 338 6 22 48293 2870 849 207 417 473 45 5585 143 4615 37457 282 1297 939 4397 5494 5457 83 9847 45055 1640 717 2444 39766 4397 49325 5998 131 35524 295 428 1215 2603 26930 29 49371 11988 46613 40460 1215 8656 29 131 35524 114 36 40460 1215 8656 1215 44754 8061 321 48200 295 428 1215 8656 1215 44754 49333 295 428 2
+04/18/2024 21:13:30 - INFO - __main__ -   *** Example ***
+04/18/2024 21:13:30 - INFO - __main__ -   idx: 2
+04/18/2024 21:13:30 - INFO - __main__ -   label: 0
+04/18/2024 21:13:30 - INFO - __main__ -   input_tokens: ['<s>', 'static', '_void', '_v', '4', 'l', '2', '_', 'free', '_', 'buffer', '(', 'void', '_*', 'op', 'aque', ',', '_uint', '8', '_', 't', '_*', 'un', 'used', ')', '_{', '_V', '4', 'L', '2', 'Buffer', '*', '_av', 'buf', '_=', '_opaque', ';', '_V', '4', 'L', '2', 'm', '2', 'm', 'Context', '_*', 's', '_=', '_buf', '_', 'to', '_', 'm', '2', 'm', 'ctx', '(', 'av', 'buf', ');', '_if', '_(', 'atomic', '_', 'f', 'etch', '_', 'sub', '(&', 'av', 'buf', '->', 'context', '_', 'ref', 'count', ',', '_1', ')', '_==', '_1', ')', '_{', '_atomic', '_', 'f', 'etch', '_', 'sub', '_', 'expl', 'icit', '(&', 's', '->', 'ref', 'count', ',', '_1', ',', '_memory', '_', 'order', '_', 'ac', 'q', '_', 'rel', ');', '_if', '_(', 's', '->', 're', 'init', ')', '_{', '_if', '_(!', 'atomic', '_', 'load', '(&', 's', '->', 'ref', 'count', '))', '_sem', '_', 'post', '(&', 's', '->', 'ref', 'sync', ');', '_}', '_else', '_if', '_(', 'av', 'buf', '->', 'context', '->', 'stream', 'on', ')', '_ff', '_', 'v', '4', 'l', '2', '_', 'buffer', '_', 'en', 'queue', '(', 'av', 'buf', ');', '_av', '_', 'buffer', '_', 'un', 'ref', '(&', 'av', 'buf', '->', 'context', '_', 'ref', ');', '_}', '_}', '</s>']
+04/18/2024 21:13:30 - INFO - __main__ -   input_ids: 0 42653 13842 748 306 462 176 1215 3743 1215 47438 1640 47908 1009 1517 35485 6 49315 398 1215 90 1009 879 6199 43 25522 468 306 574 176 49334 3226 6402 48939 5457 31861 131 468 306 574 176 119 176 119 48522 1009 29 5457 49125 1215 560 1215 119 176 119 49575 1640 1469 48939 4397 114 36 45826 1215 506 29094 1215 10936 49763 1469 48939 46613 46796 1215 13043 11432 6 112 43 45994 112 43 25522 21495 1215 506 29094 1215 10936 1215 23242 17022 49763 29 46613 13043 11432 6 112 6 3783 1215 10337 1215 1043 1343 1215 5982 4397 114 36 29 46613 241 25153 43 25522 114 48209 45826 1215 16204 49763 29 46613 13043 11432 35122 9031 1215 7049 49763 29 46613 13043 45176 4397 35524 1493 114 36 1469 48939 46613 46796 46613 8656 261 43 48400 1215 705 306 462 176 1215 47438 1215 225 48702 1640 1469 48939 4397 6402 1215 47438 1215 879 13043 49763 1469 48939 46613 46796 1215 13043 4397 35524 35524 2 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+/home/u200110901/.conda/envs/codebert/lib/python3.12/site-packages/transformers/optimization.py:429: FutureWarning: This implementation of AdamW is deprecated and will be removed in a future version. Use the PyTorch implementation torch.optim.AdamW instead, or set `no_deprecation_warning=True` to disable this warning
+  warnings.warn(
+04/18/2024 21:13:32 - INFO - __main__ -   ***** Running training *****
+04/18/2024 21:13:32 - INFO - __main__ -     Num examples = 21854
+04/18/2024 21:13:32 - INFO - __main__ -     Num Epochs = 5
+04/18/2024 21:13:32 - INFO - __main__ -     Instantaneous batch size per GPU = 16
+04/18/2024 21:13:32 - INFO - __main__ -     Total train batch size (w. parallel, distributed & accumulation) = 32
+04/18/2024 21:13:32 - INFO - __main__ -     Gradient Accumulation steps = 1
+04/18/2024 21:13:32 - INFO - __main__ -     Total optimization steps = 3415
+  0%|          | 0/683 [00:00<?, ?it/s]  0%|          | 0/683 [00:03<?, ?it/s]
+SequenceClassifierOutput(loss=None, logits=tensor([[-0.0730],
+        [-0.0043],
+        [-0.1162],
+        [ 0.0045],
+        [ 0.1882],
+        [-0.4193],
+        [ 0.0413],
+        [ 0.0092],
+        [-0.3338],
+        [-0.2729],
+        [-0.0926],
+        [-0.0746],
+        [-0.0621],
+        [-0.0566],
+        [-0.0078],
+        [-0.1187]], device='cuda:0', grad_fn=<AddmmBackward0>), hidden_states=None, attentions=None)
+1
+tensor([[-0.0730],
+        [-0.0043],
+        [-0.1162],
+        [ 0.0045],
+        [ 0.1882],
+        [-0.4193],
+        [ 0.0413],
+        [ 0.0092],
+        [-0.3338],
+        [-0.2729],
+        [-0.0926],
+        [-0.0746],
+        [-0.0621],
+        [-0.0566],
+        [-0.0078],
+        [-0.1187]], device='cuda:0', grad_fn=<AddmmBackward0>)
+torch.Size([16, 1])
+SequenceClassifierOutput(loss=None, logits=tensor([[-0.0473],
+        [-0.0151],
+        [-0.1133],
+        [ 0.0257],
+        [ 0.1423],
+        [-0.3912],
+        [ 0.0500],
+        [-0.0290],
+        [-0.4011],
+        [-0.2534],
+        [-0.0936],
+        [-0.0375],
+        [-0.0426],
+        [-0.0882],
+        [ 0.0254],
+        [-0.1555]], device='cuda:1', grad_fn=<AddmmBackward0>), hidden_states=None, attentions=None)
+1
+tensor([[-0.0473],
+        [-0.0151],
+        [-0.1133],
+        [ 0.0257],
+        [ 0.1423],
+        [-0.3912],
+        [ 0.0500],
+        [-0.0290],
+        [-0.4011],
+        [-0.2534],
+        [-0.0936],
+        [-0.0375],
+        [-0.0426],
+        [-0.0882],
+        [ 0.0254],
+        [-0.1555]], device='cuda:1', grad_fn=<AddmmBackward0>)
+torch.Size([16, 1])
+Traceback (most recent call last):
+  File "/home/u200110901/jupyterlab/Defect-detection/CodeXGLUE/code/run.py", line 588, in <module>
+    main()
+  File "/home/u200110901/jupyterlab/Defect-detection/CodeXGLUE/code/run.py", line 561, in main
+    train(args, train_dataset, model, tokenizer)
+  File "/home/u200110901/jupyterlab/Defect-detection/CodeXGLUE/code/run.py", line 200, in train
+    loss,logits = model(inputs,labels)
+                  ^^^^^^^^^^^^^^^^^^^^
+  File "/home/u200110901/.conda/envs/codebert/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/u200110901/.conda/envs/codebert/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/u200110901/.conda/envs/codebert/lib/python3.12/site-packages/torch/nn/parallel/data_parallel.py", line 185, in forward
+    outputs = self.parallel_apply(replicas, inputs, module_kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/u200110901/.conda/envs/codebert/lib/python3.12/site-packages/torch/nn/parallel/data_parallel.py", line 200, in parallel_apply
+    return parallel_apply(replicas, inputs, kwargs, self.device_ids[:len(replicas)])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/u200110901/.conda/envs/codebert/lib/python3.12/site-packages/torch/nn/parallel/parallel_apply.py", line 106, in parallel_apply
+    output = results[i]
+             ~~~~~~~^^^
+KeyError: 0

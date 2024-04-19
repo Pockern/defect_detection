@@ -10,15 +10,9 @@ __pycache__/
 
 *.zip
 
-*.log
-
 vendor/
 
 dataset_final_sorted/
-
-data/parser
-
-reveal/
 
 vendor/
 

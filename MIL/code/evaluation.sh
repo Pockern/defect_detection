@@ -1,1 +1,0 @@
-python evaluator.py -a ../../CodeXGLUE/dataset/test.jsonl -p saved_models/predictions.txt
