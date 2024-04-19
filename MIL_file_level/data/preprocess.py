@@ -1,9 +1,11 @@
 import json
 import os
-from tree_sitter import Language, Parser
 import re
 import subprocess
 import warnings
+import random
+
+from tree_sitter import Language, Parser
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 
@@ -265,18 +267,66 @@ def dump_files_by_language_from_subfolder(root_folder, language, output_dir):
     print('collect {} pairs of good/bad files from {}'.format(file_idx+1, language))
 
 
+def split_dataset(file_name, language):
+    output_dir = language
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    # parameter init
+    train_data_file = os.path.join(output_dir, 'train.jsonl')
+    valid_data_file = os.path.join(output_dir, 'valid.jsonl')
+    test_data_file = os.path.join(output_dir, 'test.jsonl')
+    train_ratio = 0.7
+    valid_ratio = 0.15
+    test_ratio = 0.15
+
+    with open(file_name, 'r', encoding='utf-8') as f:
+        data = [json.loads(line.strip()) for line in f]
+    
+    total_len = len(data)
+    random.shuffle(data)
+    train_len = int(total_len * train_ratio)
+    valid_len = int(total_len * valid_ratio)
+    test_len = total_len - train_len - valid_len
+
+    train_data = data[:train_len]
+    valid_data = data[train_len:train_len+valid_len]
+    test_data = data[train_len+valid_len:]
+
+    with open(train_data_file, 'w', encoding='utf-8') as f:
+        for item in train_data:
+            json.dump(item, f)
+            f.write('\n')
+
+    with open(valid_data_file, 'w', encoding='utf-8') as f:
+        for item in valid_data:
+            json.dump(item, f)
+            f.write('\n')
+    
+    with open(test_data_file, 'w', encoding='utf-8') as f:
+        for item in test_data:
+            json.dump(item, f)
+            f.write('\n')
+
+    print('{} -- train dataset: {}, valid dataset: {}, test dataset: {}'.format(language, train_len, valid_len, test_len))
+
+
 def main():
     root_folder = 'dataset_final_sorted'
-    for language in ['c', 'cpp', 'py']:
-        # output_dir = language + '_with_patches.jsonl'
-        output_dir = language + '_divided.jsonl'
-        dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=output_dir)
+    language_list = ['c', 'cpp', 'py']
 
-    for language in ['c', 'cpp', 'py']:
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     output = file_name
+    #     func(language, file_name, output)
+
+    for language in language_list:
         file_name = language + '_divided.jsonl'
-        # output = language + '_divided.jsonl'
-        output = file_name
-        func(language, file_name, output)
+        split_dataset(file_name, language)
 
 
 def test():
