@@ -195,6 +195,7 @@ def train(args, train_dataset, model, tokenizer):
         for step, batch in enumerate(bar):
             inputs = batch[0].to(args.device)        
             labels=batch[1].to(args.device) 
+
             model.train()
             loss,logits = model(inputs,labels)
 

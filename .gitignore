@@ -21,3 +21,5 @@ data/parser
 reveal/
 
 vendor/
+
+huggingface_models/
