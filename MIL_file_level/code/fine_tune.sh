@@ -1,8 +1,9 @@
 python run.py \
     --output_dir=./saved_models \
-    --train_data_file=../../CodeXGLUE/dataset/train.jsonl \
-    --eval_data_file=../../CodeXGLUE/dataset/valid.jsonl \
-    --test_data_file=../../CodeXGLUE/dataset/test.jsonl \
+    --language_type=py \
+    --train_data_file=../data/py/train.jsonl \
+    --eval_data_file=../data/py/valid.jsonl \
+    --test_data_file=../data/py/test.jsonl \
     --model_name_or_path=../../huggingface_models/microsoft/codebert-base/ \
     --epoch 5 \
     --block_size 400 \

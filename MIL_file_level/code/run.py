@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import json
 import random
+import warnings
 
 from model import Model
 from tqdm import tqdm
@@ -14,30 +15,36 @@ from transformers import (RobertaConfig, RobertaForSequenceClassification, Rober
 
 # init logger
 logger = logging.getLogger(__name__)
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 # class to shape training input features
 class InputFeatures(object):
-    def __init__(self, input_tokens, input_ids, idx, label):
+    def __init__(self, input_tokens, input_ids, file_idx, label):
         # TODO
         self.input_tokens = input_tokens
         self.input_ids = input_ids
-        self.idx = idx
+        self.idx = file_idx
         self.label = label
 
 
-def convert_examples_to_features(js_object, tokenizer, args):
+def convert_examples_to_features(object, tokenizer, args, file_key):
     """
     convert obj of json file to features that model needs
     :return: inputfeatures
     """
-    # TODO
-    code = ' '.join(js_object['func'].split())
+    if file_key == 'before':
+        file_type = 'bad'
+    else:
+        file_type = 'good'
+    code = ' '.join(object[file_key]['file_code'].split())
     code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
     source_tokens = [tokenizer.cls_token]+code_tokens+[tokenizer.sep_token]
     source_ids =  tokenizer.convert_tokens_to_ids(source_tokens)
     padding_length = args.block_size - len(source_ids)
     source_ids += [tokenizer.pad_token_id]*padding_length
-    return InputFeatures(source_tokens, source_ids, js_object['idx'], js_object['target'])
+    return InputFeatures(source_tokens, source_ids, 
+                         object['cwe']+'/'+object['language']+'/'+file_type+object['cwe_id'], 
+                         object[file_key]['file_label'])
 
 
 # dataset class for get features from file with notification
@@ -47,12 +54,13 @@ class TextDataset(Dataset):
         with open(file_path) as f:
             for line in f:
                 js = json.loads(line.strip())
-                self.examples.append(convert_examples_to_features(js, tokenizer, args))
+                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'before'))
+                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'after'))
         if 'train' in file_path:
-            # TODO: feature不一样
-            for idx, example in enumerate(self.examples[:3]):
+            for idx, example in enumerate(self.examples[:2]):
                     logger.info("*** Example ***")
                     logger.info("idx: {}".format(idx))
+                    logger.info("file_id: {}".format(example.idx))
                     logger.info("label: {}".format(example.label))
                     logger.info("input_tokens: {}".format([x.replace('\u0120','_') for x in example.input_tokens]))
                     logger.info("input_ids: {}".format(' '.join(map(str, example.input_ids))))
@@ -132,8 +140,6 @@ def train(args, train_dataset, model, tokenizer):
         tr_num = 0
         train_loss = 0
         for step, batch in enumerate(bar):
-            # ------------------涉及feature长啥样，需要修改
-            # TODO
             inputs = batch[0].to(args.device)
             labels = batch[1].to(args.device)
 
@@ -183,7 +189,7 @@ def train(args, train_dataset, model, tokenizer):
                             if not os.path.exists(output_dir):
                                 os.makedirs(output_dir)                        
                             model_to_save = model.module if hasattr(model, 'module') else model
-                            output_dir = os.path.join(output_dir, '{}'.format('model.bin')) 
+                            output_dir = os.path.join(output_dir, '{}'.format(args.language_type + '_model.bin')) 
                             torch.save(model_to_save.state_dict(), output_dir)
                             logger.info("Saving model checkpoint to %s", output_dir) 
 
@@ -214,8 +220,6 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     labels=[]
 
     for batch in eval_dataloader:
-        # TODO
-        # 同理涉及具体feature
         inputs = batch[0].to(args.device)        
         label = batch[1].to(args.device) 
         with torch.no_grad():
@@ -233,7 +237,7 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
             
     result = {
         "eval_loss": float(perplexity),
-        "eval_acc":round(eval_acc,4),
+        "eval_acc":round(eval_acc, 4),
     }
     return result
 
@@ -268,7 +272,7 @@ def test(args, model, tokenizer):
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
-    with open(os.path.join(args.output_dir,"predictions.txt"), 'w') as f:
+    with open(os.path.join(args.output_dir, args.language_type + "_predictions.txt"), 'w') as f:
         for example, pred in zip(test_dataset.examples, preds):
             if pred:
                 f.write(str(example.idx)+'\t1\n')
@@ -285,6 +289,8 @@ def main():
                         help="The input training data file (a json file)")
     parser.add_argument("--output_dir", type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written")
+    parser.add_argument("--language_type", type=str, required=True, 
+                        help="The PL of intput code")
     # other
     parser.add_argument("--eval_data_file", type=str,
                         help="The input evaluation data file (a json file)")
@@ -371,8 +377,8 @@ def main():
     # load pretrained model, config and tokenizer
     tokenizer = RobertaTokenizer.from_pretrained(args.model_name_or_path)
     config = RobertaConfig.from_pretrained(args.model_name_or_path)
-    # Classification tasks: [CLS] is enough
-    config.num_labels=1
+    # Classification tasks: 
+    config.num_labels = 1
     # model = RobertaModel.from_pretrained(args.model_name_or_path)
     model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path)
 
@@ -386,7 +392,7 @@ def main():
         train(args, train_dataset, model, tokenizer)
 
     if args.do_eval:
-        checkpoint_prefix = 'checkpoint-best-acc/model.bin'
+        checkpoint_prefix = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
         output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))  
         model.load_state_dict(torch.load(output_dir))
         model.to(args.device)
@@ -396,7 +402,7 @@ def main():
             logger.info("  %s = %s", key, str(round(result[key], 4)))
 
     if args.do_test:
-        checkpoint_prefix = 'checkpoint-best-acc/model.bin'
+        checkpoint_prefix = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
         output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))  
         model.load_state_dict(torch.load(output_dir))                  
         model.to(args.device)
