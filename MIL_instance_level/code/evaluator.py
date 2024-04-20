@@ -7,18 +7,23 @@ def read_answers(filename):
     answers={}
     with open(filename) as f:
         for line in f:
-            line=line.strip()
-            js=json.loads(line)
-            answers[js['idx']]=js['target']
+            line = line.strip()
+            js = json.loads(line)
+            good_idx = js['cwe'] + '/' + js['language'] + '/' + 'good' + js['cwe_id']
+            bad_idx = good_idx.replace('good', 'bad')
+            answers[good_idx] = 0
+
+            if len(js['functions_before_patches']) > 0:
+                answers[bad_idx] = 1
     return answers
 
 def read_predictions(filename):
     predictions={}
     with open(filename) as f:
         for line in f:
-            line=line.strip()
-            idx,label=line.split()
-            predictions[int(idx)]=int(label)
+            line = line.strip()
+            idx, label = line.split()
+            predictions[str(idx)] = int(label)
     return predictions
 
 def calculate_scores(answers,predictions):

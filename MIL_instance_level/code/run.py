@@ -86,7 +86,7 @@ class TextDataset(Dataset):
             for idx, example in enumerate(self.examples[:2]):
                     logger.info("*** Example ***")
                     logger.info("file_id: {}".format(example.file_idx))
-                    logger.info('file labels: {}'.format(example.file_labels[0]))
+                    logger.info('file label: {}'.format(example.file_label))
                     logger.info("number of functions: {}".format(len(example.functions_idx)))
                     logger.info("function labels: {}".format(example.functions_labels))
                     logger.info("first function tokens: {}".format([x.replace('\u0120','_') for x in example.input_functions_tokens[0]]))
@@ -115,7 +115,7 @@ def train(args, train_dataset, model, tokenizer):
     # dataloader init
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, 
-                                  batch_size=args.train_batch_size, num_workers=4, pin_memory=True)
+                                  batch_size=args.train_batch_size, num_workers=2, pin_memory=False)
 
     # parameter init
     args.max_steps = args.epoch * len(train_dataloader)
@@ -205,8 +205,6 @@ def train(args, train_dataset, model, tokenizer):
                         results = evaluate(args, model, tokenizer, eval_during_training=True)
                         for key, value in results.items():
                             logger.info("  %s = %s", key, round(value,4))
-
-                        exit(0)
 
                     if results['eval_acc'] > best_acc:
                             best_acc = results['eval_acc']
@@ -306,9 +304,9 @@ def test(args, model, tokenizer):
     with open(os.path.join(args.output_dir, args.language_type + "_predictions.txt"), 'w') as f:
         for example, pred in zip(test_dataset.examples, preds):
             if pred:
-                f.write(str(example.idx)+'\t1\n')
+                f.write(str(example.file_idx)+'\t1\n')
             else:
-                f.write(str(example.idx)+'\t0\n') 
+                f.write(str(example.file_idx)+'\t0\n') 
 
 
 def main():
