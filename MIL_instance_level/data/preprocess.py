@@ -311,22 +311,48 @@ def split_dataset(file_name, language):
     print('{} -- train dataset: {}, valid dataset: {}, test dataset: {}'.format(language, train_len, valid_len, test_len))
 
 
+def limit_functions(file_name, output_dir):
+    js_objects = []
+    with open(file_name, 'r') as f:
+        for line in f:
+            data = json.loads(line)
+            js_objects.append(data)
+
+    dest_js = []
+    for object in js_objects:
+        functions = object['functions_before_patches']
+        # magic number by test(87 for single test)
+        if len(functions) <= 60:
+            dest_js.append(object)
+
+    with open(output_dir, 'w') as f:
+        for data in dest_js:
+            json.dump(data, f)
+            f.write('\n')
+    print('from {} collect {}'.format(len(js_objects), len(dest_js)))
+
+
 def main():
     root_folder = 'dataset_final_sorted'
     language_list = ['c', 'cpp', 'py']
 
-    for language in language_list:
-        file_name = language + '_divided.jsonl'
-        dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     output = file_name
+    #     func(language, file_name, output)
+
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     split_dataset(file_name, language)
 
     for language in language_list:
         file_name = language + '_divided.jsonl'
-        output = file_name
-        func(language, file_name, output)
-
-    for language in language_list:
-        file_name = language + '_divided.jsonl'
-        split_dataset(file_name, language)
+        output_dir = file_name
+        limit_functions(file_name, output_dir)
 
 
 def test():

@@ -10,7 +10,7 @@ import warnings
 from model import Model
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
-from transformers import (RobertaConfig, RobertaModel, RobertaTokenizer, AdamW,
+from transformers import (RobertaConfig, RobertaModel, RobertaForSequenceClassification, RobertaTokenizer, AdamW,
                           get_linear_schedule_with_warmup) 
 
 # init logger
@@ -19,12 +19,12 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 
 # class to shape training input features
 class InputFeatures(object):
-    def __init__(self, input_functions_tokens, input_functions_ids, functions_idx, functions_labels, file_labels, file_idx):
+    def __init__(self, input_functions_tokens, input_functions_ids, functions_idx, functions_labels, file_label, file_idx):
         self.input_functions_tokens = input_functions_tokens
         self.input_functions_ids = input_functions_ids
         self.functions_idx = functions_idx
         self.functions_labels = functions_labels
-        self.file_labels = file_labels
+        self.file_label = file_label
         self.file_idx = file_idx
 
 
@@ -42,10 +42,14 @@ def convert_examples_to_features(object, tokenizer, args, file_key):
     input_functions_ids = []
     functions_idx = []
     functions_labels = []
-    file_labels = []
     file_idx = object['cwe'] + '/' + object['language'] + '/' + file_type + object['cwe_id']
 
     functions = object[file_key]
+    if len(functions) == 0:
+        return None
+    else:
+        file_label = functions[0]
+        file_label = file_label['bag_label']
     for function in functions:
         code = ' '.join(function['function_code'].split())
         code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
@@ -58,9 +62,8 @@ def convert_examples_to_features(object, tokenizer, args, file_key):
         input_functions_ids.append(source_ids)
         functions_idx.append(function['function_idx'])
         functions_labels.append(function['function_label'])
-        file_labels.append(function['bag_label'])
 
-    return InputFeatures(input_functions_tokens, input_functions_ids, functions_idx, functions_labels, file_labels, file_idx)
+    return InputFeatures(input_functions_tokens, input_functions_ids, functions_idx, functions_labels, file_label, file_idx)
 
 
 # dataset class for get features from file with notification
@@ -70,8 +73,15 @@ class TextDataset(Dataset):
         with open(file_path) as f:
             for line in f:
                 js = json.loads(line.strip())
-                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_before_patches'))
-                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_after_patches'))
+                feature = convert_examples_to_features(js, tokenizer, args, 'functions_before_patches')
+                if feature is not None:
+                    self.examples.append(feature)
+                feature = convert_examples_to_features(js, tokenizer, args, 'functions_after_patches')
+                if feature is not None:
+                    self.examples.append(feature)
+                
+                # self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_before_patches'))
+                # self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_after_patches'))
         if 'train' in file_path:
             for idx, example in enumerate(self.examples[:2]):
                     logger.info("*** Example ***")
@@ -86,7 +96,7 @@ class TextDataset(Dataset):
         return len(self.examples)
     
     def __getitem__(self, index):
-        return torch.tensor(self.examples[index].input_functions_ids), torch.tensor(self.examples[index].functions_labels), torch.tensor(self.examples[index].file_labels)
+        return torch.tensor(self.examples[index].input_functions_ids), torch.tensor(self.examples[index].functions_labels), torch.tensor(self.examples[index].file_label)
 
 
 def set_seed(seed=42):
@@ -109,7 +119,7 @@ def train(args, train_dataset, model, tokenizer):
 
     # parameter init
     args.max_steps = args.epoch * len(train_dataloader)
-    args.save_steps = len(train_dataloader)
+    args.save_steps = len(train_dataloader) // args.gradient_accumulation_steps
     args.warmup_stemps = len(train_dataloader)
     args.logging_steps = len(train_dataloader)
     model.to(args.device)
@@ -157,7 +167,6 @@ def train(args, train_dataset, model, tokenizer):
         tr_num = 0
         train_loss = 0
         for step, batch in enumerate(bar):
-            # TODO
             functions_inputs = batch[0].to(args.device)
             functions_labels = batch[1].to(args.device)
             file_label = batch[2].to(args.device)
@@ -195,7 +204,9 @@ def train(args, train_dataset, model, tokenizer):
                     if args.evaluate_during_training:
                         results = evaluate(args, model, tokenizer, eval_during_training=True)
                         for key, value in results.items():
-                            logger.info("  %s = %s", key, round(value,4)) 
+                            logger.info("  %s = %s", key, round(value,4))
+
+                        exit(0)
 
                     if results['eval_acc'] > best_acc:
                             best_acc = results['eval_acc']
@@ -220,7 +231,6 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     if not os.path.exists(eval_output_dir):
         os.makedirs(eval_output_dir)
     
-    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size,num_workers=4,pin_memory=True)
 
@@ -239,15 +249,14 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     labels=[]
 
     for batch in eval_dataloader:
-        # TODO
-        functions_inputs = batch[0].to(args.device)
+        functions_ids = batch[0].to(args.device)
         functions_labels = batch[1].to(args.device)
         file_label = batch[2].to(args.device)
         with torch.no_grad():
-            lm_loss, logit = model(functions_inputs, functions_labels, file_label)
+            lm_loss, logit = model(functions_ids, functions_labels, file_label)
             eval_loss += lm_loss.mean().item()
             logits.append(logit.cpu().numpy())
-            # labels.append(label.cpu().numpy())
+            labels.append(file_label.cpu().numpy())
         nb_eval_steps += 1
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
@@ -266,7 +275,6 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
 def test(args, model, tokenizer):
     # test parameter init
     test_dataset = TextDataset(tokenizer, args,args.test_data_file)
-    args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=args.eval_batch_size)
 
@@ -284,12 +292,13 @@ def test(args, model, tokenizer):
 
     for batch in tqdm(test_dataloader, total=len(test_dataloader)):
         # TODO
-        inputs = batch[0].to(args.device)        
-        label = batch[1].to(args.device)
+        functions_ids = batch[0].to(args.device)
+        functions_labels = batch[1].to(args.device)
+        file_label = batch[2].to(args.device)
         with torch.no_grad():
-            logit = model(inputs)
+            logit = model(functions_ids, functions_labels)
             logits.append(logit.cpu().numpy())
-            labels.append(label.cpu().numpy())
+            labels.append(file_label.cpu().numpy())
 
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
@@ -396,6 +405,7 @@ def main():
     tokenizer = RobertaTokenizer.from_pretrained(args.model_name_or_path)
     config = RobertaConfig.from_pretrained(args.model_name_or_path)
     model = RobertaModel.from_pretrained(args.model_name_or_path)
+    # model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path)
 
     model = Model(model, config, tokenizer, args)
 
