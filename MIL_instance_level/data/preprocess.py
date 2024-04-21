@@ -9,13 +9,14 @@ from tree_sitter import Language, Parser
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-# 构筑语言模块
+# # 构筑语言模块
 # Language.build_library(
 #     'parser/languages.so',
 #     [
 #         'vendor/tree-sitter-c',
 #         'vendor/tree-sitter-cpp',
-#         'vendor/tree-sitter-python'
+#         'vendor/tree-sitter-python',
+#         'vendor/tree-sitter-javascript'
 #     ]
 # )
 
@@ -69,6 +70,8 @@ def remove_comment(code, language):
     """
     if language == 'py':
         language = 'python'
+    elif language == 'js':
+        language = 'javascript'
 
     # 加载语言模块
     LANGUAGE = Language('parser/languages.so', language)
@@ -100,6 +103,8 @@ def slice(code, language):
     """
     if language == 'py':
         language = 'python'
+    elif language == 'js':
+        language = 'javascript'
 
     # 加载语言模块
     LANGUAGE = Language('parser/languages.so', language)
@@ -276,9 +281,9 @@ def split_dataset(file_name, language):
     train_data_file = os.path.join(output_dir, 'train.jsonl')
     valid_data_file = os.path.join(output_dir, 'valid.jsonl')
     test_data_file = os.path.join(output_dir, 'test.jsonl')
-    train_ratio = 0.7
-    valid_ratio = 0.15
-    test_ratio = 0.15
+    train_ratio = 0.8
+    valid_ratio = 0.1
+    test_ratio = 0.1
 
     with open(file_name, 'r', encoding='utf-8') as f:
         data = [json.loads(line.strip()) for line in f]
@@ -311,7 +316,7 @@ def split_dataset(file_name, language):
     print('{} -- train dataset: {}, valid dataset: {}, test dataset: {}'.format(language, train_len, valid_len, test_len))
 
 
-def limit_functions(file_name, output_dir, language):
+def limit_functions(file_name, output_dir, language, limit_cnt):
     js_objects = []
     with open(file_name, 'r') as f:
         for line in f:
@@ -320,46 +325,48 @@ def limit_functions(file_name, output_dir, language):
 
     dest_js = []
     for object in js_objects:
-        functions = object['functions_before_patches']
+        functions_before = object['functions_before_patches']
+        functions_after = object['functions_after_patches']
         # magic number by test(87 for single test)
-        if len(functions) < 55:
+        if len(functions_before) < limit_cnt and len(functions_after) < limit_cnt:
             dest_js.append(object)
 
     with open(output_dir, 'w') as f:
         for data in dest_js:
             json.dump(data, f)
             f.write('\n')
-    print('{}: from {} collect {}'.format(language, len(js_objects), len(dest_js)))
+    print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
 
 
 def main():
     root_folder = 'dataset_final_sorted'
-    language_list = ['c', 'cpp', 'py']
-
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
-
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     output = file_name
-    #     func(language, file_name, output)
+    language_list = ['c', 'cpp', 'py', 'js']
 
     for language in language_list:
         file_name = language + '_divided.jsonl'
-        output_dir = file_name
-        limit_functions(file_name, output_dir, language)
+        dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+
+    for language in language_list:
+        file_name = language + '_divided.jsonl'
+        output = file_name
+        func(language, file_name, output)
 
     for language in language_list:
         file_name = language + '_divided.jsonl'
         split_dataset(file_name, language)
+
+    for language in language_list:
+        for file in ['train', 'test', 'valid']:
+            file_name = os.path.join(language, file + '.jsonl')
+            output_dir = file_name
+            limit_functions(file_name, output_dir, language, 55)
 
 
 def test():
     """
     仅用作测试各种特殊情况
     """
-    file_path = 'dataset_final_sorted/CWE-190/cpp/bad_582_1'
+    file_path = 'dataset_final_sorted/CWE-20/cpp/good_1442_0'
     with open(file_path, 'r') as f:
         content = f.read()
     functions, functions_start, functions_end = slice(content, 'cpp')

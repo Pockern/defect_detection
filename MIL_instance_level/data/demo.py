@@ -1,39 +1,46 @@
 import json
 import random
 
-def main():
-    # file_name = './cpp_divided.jsonl'
-    file_name = './temp.jsonl'
+def len_of_json(file_name):
     js_objects = []
     with open(file_name, 'r') as f:
         for line in f:
             data = json.loads(line)
             js_objects.append(data)
 
+    print('{} len: {}'.format(file_name, len(js_objects)))
 
-    print(len(js_objects))
-    # output_dir = './temp.jsonl'
-    # cnt = 0
-    # dest_js = []
-    # random.shuffle(js_objects)
-    # for object in js_objects:
-    #     dest_js.append(object)
-    #     cnt += 1
-    #     if cnt == 32:
-    #         print('ok')
-    #         break
+def len_state(file_name):
+    js_objects = []
+    with open(file_name, 'r') as f:
+        for line in f:
+            data = json.loads(line)
+            js_objects.append(data)
 
-    
-    # print('from {} collect {}'.format(len(js_objects), len(dest_js)))
+    len_state = {}
+    for object in js_objects:
+        len1 = len(object['functions_before_patches'])
+        if len1 in len_state:
+            len_state[len1] += 1
+        else:
+            len_state[len1] = 1
 
-    # with open(output_dir, 'w') as f:
-    #     for data in dest_js:
-    #         json.dump(data, f)
-    #         f.write('\n')
+        len1 = len(object['functions_after_patches'])
+        if len1 in len_state:
+            len_state[len1] += 1
+        else:
+            len_state[len1] = 1
 
-    object_len = [len(object['functions_before_patches']) for object in js_objects]
-    print(max(object_len))
-    # print(object_len)
+    print(file_name)
+    for key in sorted(len_state.keys()):
+        count = len_state[key]
+        print("len {} : {}".format(key, count))
+
+
+def main():
+    for file_name in ['./c/train.jsonl', './cpp/train.jsonl', './py/train.jsonl']:
+        # len_state(file_name)
+        len_of_json(file_name)
 
 
 if __name__ == '__main__':

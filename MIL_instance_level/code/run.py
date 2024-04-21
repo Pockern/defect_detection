@@ -186,13 +186,15 @@ def train(args, train_dataset, model, tokenizer):
             if avg_loss == 0:
                 avg_loss = tr_loss
             avg_loss = round(train_loss / tr_num, 5)
-            bar.set_description("epoch {} step {} loss {}".format(idx, step+1, avg_loss))
+            bar.set_description("epoch {} loss {}".format(idx, avg_loss))
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()
                 global_step += 1
+                del functions_inputs, functions_labels, file_label, loss, logits
+                torch.cuda.empty_cache()
                 
                 avg_loss = round(np.exp((tr_loss - logging_loss) / (global_step - tr_nb)),4)
                 if args.logging_steps > 0 and global_step % args.logging_steps == 0:
@@ -289,7 +291,6 @@ def test(args, model, tokenizer):
     labels=[]
 
     for batch in tqdm(test_dataloader, total=len(test_dataloader)):
-        # TODO
         functions_ids = batch[0].to(args.device)
         functions_labels = batch[1].to(args.device)
         file_label = batch[2].to(args.device)

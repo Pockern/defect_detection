@@ -41,7 +41,7 @@ class Model(nn.Module):
         outputs = outputs.pooler_output
     
         outputs = self.dropout(outputs)
-        bag_feature = nn.functional.adaptive_avg_pool2d(outputs.unsqueeze(0), (1, 768))[0]
+        bag_feature = nn.functional.adaptive_max_pool2d(outputs.unsqueeze(0), (1, 768))[0]
 
         logits = self.linear(bag_feature)
         prob = torch.sigmoid(logits)

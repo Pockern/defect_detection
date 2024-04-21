@@ -2,7 +2,7 @@ import logging
 import sys
 import json
 import numpy as np
-
+  
 def read_answers(filename):
     answers={}
     with open(filename) as f:
@@ -11,10 +11,13 @@ def read_answers(filename):
             js = json.loads(line)
             good_idx = js['cwe'] + '/' + js['language'] + '/' + 'good' + js['cwe_id']
             bad_idx = good_idx.replace('good', 'bad')
-            answers[good_idx] = 0
+
+            if len(js['functions_after_patches']) > 0:
+                answers[good_idx] = 0
 
             if len(js['functions_before_patches']) > 0:
                 answers[bad_idx] = 1
+
     return answers
 
 def read_predictions(filename):
@@ -24,6 +27,7 @@ def read_predictions(filename):
             line = line.strip()
             idx, label = line.split()
             predictions[str(idx)] = int(label)
+
     return predictions
 
 def calculate_scores(answers,predictions):
