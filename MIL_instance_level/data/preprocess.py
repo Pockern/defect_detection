@@ -84,10 +84,11 @@ def remove_comment(code, language):
     :param language: language of code
     :return: cleaned code
     """
-    if language == 'py':
+    if language == 'c' or language == 'cpp':
+        pattern = r'//.*?$|//.*$'
+    elif language == 'py':
+        pattern = r'#.*?$|#$'
         language = 'python'
-    elif language == 'js':
-        language = 'javascript'
 
     # 加载语言模块
     LANGUAGE = Language('parser/languages.so', language)
@@ -107,7 +108,11 @@ def remove_comment(code, language):
         else: 
             stack.extend(node.children)
 
-    return code.decode()
+    result =  code.decode()
+
+    cleaned_code = re.sub(pattern, '', result, flags=re.MULTILINE)
+
+    return cleaned_code
 
 
 def slice(code, language):
@@ -117,10 +122,11 @@ def slice(code, language):
     :param language: the PL of code
     :return: list of divided functions, list of function_starts, list of functions_ends
     """
-    if language == 'py':
+    if language == 'c' or language == 'cpp':
+        pattern = r'//.*?$|//.*$'
+    elif language == 'py':
+        pattern = r'#.*?$|#$'
         language = 'python'
-    elif language == 'js':
-        language = 'javascript'
 
     # 加载语言模块
     LANGUAGE = Language('parser/languages.so', language)
@@ -305,19 +311,26 @@ def split_dataset(file_name, language):
         data = [json.loads(line.strip()) for line in f]
 
     files = []
-    for object in data:
+    for cnt, object in enumerate(data):
         file_idx = object['cwe'] + '/bad'+object['cwe_id']
         functions = object['functions_before_patches']
+        # 除去 \n\t
+        for function in functions:
+            function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
         language = object['language']
         file_label = 1
-        if len(functions) > 0:
+        if len(functions) > 0 and cnt % 2 == 0:
             files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
 
+        # -------------good -----------------------------------s
         file_idx = file_idx.replace('bad', 'good')
         functions = object['functions_after_patches']
+        # 除去 \n\t
+        for function in functions:
+            function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
         language = object['language']
         file_label = 0
-        if len(functions) > 0:
+        if len(functions) > 0 and cnt % 2 != 0:
             files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
 
     
@@ -358,23 +371,28 @@ def limit_functions(file_name, output_dir, limit_low, limit_high):
 
     dest_js = []
     for object in js_objects:
-        functions = object['functions']
-        print(len(functions))
-        exit(0)
+        functions = object['functions'][0]
         # magic number by test(87 for single test)
-        if len(functions) < limit_high and len(functions) > limit_low:
+        if len(functions) <= limit_high and len(functions) >= limit_low:
             dest_js.append(object)
 
-    # with open(output_dir, 'w') as f:
-    #     for data in dest_js:
-    #         json.dump(data, f)
-    #         f.write('\n')
-    # print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
+    with open(output_dir, 'w') as f:
+        for data in dest_js:
+            json.dump(data, f)
+            f.write('\n')
+    print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
+
+
+def adjust_positive_negetive_ratio(file_name, ratio):
+    with open(file_name, 'r') as f:
+        objects = [json.loads(line) for line in f]
+    
+    # TODO
 
 
 def main():
     root_folder = 'dataset_final_sorted'
-    language_list = ['c', 'cpp', 'py', 'js']
+    language_list = ['c', 'cpp', 'py']
 
     # for language in language_list:
     #     file_name = language + '_divided.jsonl'
@@ -385,15 +403,21 @@ def main():
     #     output = file_name
     #     func(language, file_name, output)
 
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     split_dataset(file_name, language)
-
     for language in language_list:
-        for file in ['train', 'test', 'valid']:
-            file_name = os.path.join(language, file + '.jsonl')
-            output_dir = file_name
-            limit_functions(file_name, output_dir, 3, 12)
+        file_name = language + '_divided.jsonl'
+        split_dataset(file_name, language)
+
+    # for language in language_list:
+    #     for file in ['train', 'test', 'valid']:
+    #         file_name = os.path.join(language, file + '.jsonl')
+    #         output_dir = file_name
+    #         limit_functions(file_name, output_dir, 1, 50)
+
+    # for language in language_list:
+    #     for file in ['train.jsonl']:
+    #         file_name = os.path.join(language, file)
+    #         output_dir = file_name
+    #         limit_functions(file_name, output_dir, 1, 15)
 
 
 def test():

@@ -11,7 +11,7 @@ def len_of_json(file_name):
 
     print('{} len: {}'.format(file_name, len(js_objects)))
 
-def len_state(file_name):
+def function_state(file_name):
     js_objects = []
     with open(file_name, 'r') as f:
         for line in f:
@@ -20,9 +20,7 @@ def len_state(file_name):
 
     len_state = {}
     for object in js_objects:
-        print(object['functions'][0])
-        exit(0)
-        len1 = len(object['functions'])
+        len1 = len(object['functions'][0])
         if len1 in len_state:
             len_state[len1] += 1
         else:
@@ -105,11 +103,27 @@ def change_to_dvign(file_name):
     print(len(tag0))
     
 
+def bag_state(file_name):
+    with open(file_name, 'r') as f:
+        objects = [json.loads(line) for line in f]
+
+    pos = 0
+    neg = 0
+    for object in objects:
+        if object['file_label'] == 1:
+            neg += 1
+        else:
+            pos += 1
+    print('{}: good bag {} / bad bag {}'.format(file_name, pos, neg))
+
 
 def main():
-    for file_name in ['./c/train.jsonl', './c/valid.jsonl', './c/test.jsonl']:
-        len_state(file_name)
-        len_of_json(file_name)
+    for language in ['c', 'cpp', 'py']:
+        for file in ['train.jsonl', 'valid.jsonl', 'test.jsonl']:
+            file_name = os.path.join(language, file)
+            # function_state(file_name)
+            # len_of_json(file_name)
+            bag_state(file_name)
         
 
 
