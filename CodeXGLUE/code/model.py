@@ -21,13 +21,8 @@ class Model(nn.Module):
 
         
     def forward(self, input_ids=None,labels=None): 
-        # outputs=self.encoder(input_ids,attention_mask=input_ids.ne(1))[0]
-        outputs=self.encoder(input_ids,attention_mask=input_ids.ne(1))
-        print(outputs)
-        print(len(outputs))
-        print(outputs[0])
-        print(outputs[0].shape)
-        exit(0)
+        outputs=self.encoder(input_ids,attention_mask=input_ids.ne(1))[0]
+        # outputs=self.encoder(input_ids,attention_mask=input_ids.ne(1))
 
         # Apply dropout
         outputs = self.dropout(outputs)

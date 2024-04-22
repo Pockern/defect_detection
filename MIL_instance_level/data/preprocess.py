@@ -59,6 +59,22 @@ class FunctionEntry:
             "function_label": self.function_label,
             "bag_label": self.bag_label
         }
+    
+
+class DatasetEntry:
+    def __init__(self, file_idx, functions, language, file_label):
+        self.file_idx = file_idx
+        self.functions = functions,
+        self.language = language,
+        self.file_label = file_label
+
+    def to_dict(self):
+        return {
+            "file_idx": self.file_idx,
+            "functions": self.functions,
+            "language": self.language,
+            "file_label": self.file_label
+        }
 
 
 def remove_comment(code, language):
@@ -287,16 +303,33 @@ def split_dataset(file_name, language):
 
     with open(file_name, 'r', encoding='utf-8') as f:
         data = [json.loads(line.strip()) for line in f]
+
+    files = []
+    for object in data:
+        file_idx = object['cwe'] + '/bad'+object['cwe_id']
+        functions = object['functions_before_patches']
+        language = object['language']
+        file_label = 1
+        if len(functions) > 0:
+            files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+
+        file_idx = file_idx.replace('bad', 'good')
+        functions = object['functions_after_patches']
+        language = object['language']
+        file_label = 0
+        if len(functions) > 0:
+            files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+
     
-    total_len = len(data)
-    random.shuffle(data)
+    total_len = len(files)
+    random.shuffle(files)
     train_len = int(total_len * train_ratio)
     valid_len = int(total_len * valid_ratio)
     test_len = total_len - train_len - valid_len
 
-    train_data = data[:train_len]
-    valid_data = data[train_len:train_len+valid_len]
-    test_data = data[train_len+valid_len:]
+    train_data = files[:train_len]
+    valid_data = files[train_len:train_len+valid_len]
+    test_data = files[train_len+valid_len:]
 
     with open(train_data_file, 'w', encoding='utf-8') as f:
         for item in train_data:
@@ -316,7 +349,7 @@ def split_dataset(file_name, language):
     print('{} -- train dataset: {}, valid dataset: {}, test dataset: {}'.format(language, train_len, valid_len, test_len))
 
 
-def limit_functions(file_name, output_dir, language, limit_cnt):
+def limit_functions(file_name, output_dir, limit_low, limit_high):
     js_objects = []
     with open(file_name, 'r') as f:
         for line in f:
@@ -325,41 +358,42 @@ def limit_functions(file_name, output_dir, language, limit_cnt):
 
     dest_js = []
     for object in js_objects:
-        functions_before = object['functions_before_patches']
-        functions_after = object['functions_after_patches']
+        functions = object['functions']
+        print(len(functions))
+        exit(0)
         # magic number by test(87 for single test)
-        if len(functions_before) < limit_cnt and len(functions_after) < limit_cnt:
+        if len(functions) < limit_high and len(functions) > limit_low:
             dest_js.append(object)
 
-    with open(output_dir, 'w') as f:
-        for data in dest_js:
-            json.dump(data, f)
-            f.write('\n')
-    print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
+    # with open(output_dir, 'w') as f:
+    #     for data in dest_js:
+    #         json.dump(data, f)
+    #         f.write('\n')
+    # print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
 
 
 def main():
     root_folder = 'dataset_final_sorted'
     language_list = ['c', 'cpp', 'py', 'js']
 
-    for language in language_list:
-        file_name = language + '_divided.jsonl'
-        dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
 
-    for language in language_list:
-        file_name = language + '_divided.jsonl'
-        output = file_name
-        func(language, file_name, output)
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     output = file_name
+    #     func(language, file_name, output)
 
-    for language in language_list:
-        file_name = language + '_divided.jsonl'
-        split_dataset(file_name, language)
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     split_dataset(file_name, language)
 
     for language in language_list:
         for file in ['train', 'test', 'valid']:
             file_name = os.path.join(language, file + '.jsonl')
             output_dir = file_name
-            limit_functions(file_name, output_dir, language, 55)
+            limit_functions(file_name, output_dir, 3, 12)
 
 
 def test():

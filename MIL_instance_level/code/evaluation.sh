@@ -1,1 +1,1 @@
-python evaluator.py -a ../data/c/test.jsonl -p saved_models/c_predictions.txt
+python evaluator.py -a ../data/cpp/test.jsonl -p saved_models/cpp_predictions.txt

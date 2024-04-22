@@ -12,6 +12,8 @@ __pycache__/
 
 vendor/
 
+datasets/
+
 dataset_final_sorted/
 
 huggingface_models/

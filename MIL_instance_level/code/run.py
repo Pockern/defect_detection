@@ -119,7 +119,7 @@ def train(args, train_dataset, model, tokenizer):
 
     # parameter init
     args.max_steps = args.epoch * len(train_dataloader)
-    args.save_steps = len(train_dataloader) // args.gradient_accumulation_steps
+    args.save_steps = len(train_dataloader)
     args.warmup_stemps = len(train_dataloader)
     args.logging_steps = len(train_dataloader)
     model.to(args.device)
@@ -172,10 +172,13 @@ def train(args, train_dataset, model, tokenizer):
             file_label = batch[2].to(args.device)
 
             model.train()
-            loss, logits = model(functions_inputs, functions_labels, file_label)
+            loss, logits, _ = model(functions_inputs, functions_labels, file_label)
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
+
+            if args.gradient_accumulation_steps > 1:
+                loss = loss / args.gradient_accumulation_steps
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
@@ -187,12 +190,12 @@ def train(args, train_dataset, model, tokenizer):
                 avg_loss = tr_loss
             avg_loss = round(train_loss / tr_num, 5)
             bar.set_description("epoch {} loss {}".format(idx, avg_loss))
+            global_step += 1
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()
-                global_step += 1
                 del functions_inputs, functions_labels, file_label, loss, logits
                 torch.cuda.empty_cache()
                 
@@ -253,7 +256,7 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
         functions_labels = batch[1].to(args.device)
         file_label = batch[2].to(args.device)
         with torch.no_grad():
-            lm_loss, logit = model(functions_ids, functions_labels, file_label)
+            lm_loss, logit, _ = model(functions_ids, functions_labels, file_label)
             eval_loss += lm_loss.mean().item()
             logits.append(logit.cpu().numpy())
             labels.append(file_label.cpu().numpy())
@@ -287,27 +290,39 @@ def test(args, model, tokenizer):
     logger.info("  Batch size = %d", args.eval_batch_size)
     
     model.eval()
-    logits=[]   
-    labels=[]
+    logits = []   
+    labels = []
+    attention_powers = []
+    attention_labels = []
 
     for batch in tqdm(test_dataloader, total=len(test_dataloader)):
         functions_ids = batch[0].to(args.device)
         functions_labels = batch[1].to(args.device)
         file_label = batch[2].to(args.device)
         with torch.no_grad():
-            logit = model(functions_ids, functions_labels)
+            logit, a = model(functions_ids, functions_labels)
             logits.append(logit.cpu().numpy())
             labels.append(file_label.cpu().numpy())
+            attention_powers.append(a.cpu().numpy())
+            attention_labels.append(functions_labels.cpu().numpy())
 
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
+
     with open(os.path.join(args.output_dir, args.language_type + "_predictions.txt"), 'w') as f:
         for example, pred in zip(test_dataset.examples, preds):
             if pred:
                 f.write(str(example.file_idx)+'\t1\n')
             else:
                 f.write(str(example.file_idx)+'\t0\n') 
+
+    with open(os.path.join(args.output_dir, args.language_type + "_attention.txt"), 'w') as f:
+        for example, powers, labels in zip(test_dataset.examples, attention_powers, attention_labels):
+            f.write(str(example.file_idx)+':\t')
+            for power, label in zip(powers, labels):
+                f.write(str(label)+':'+str(power)+'\t')
+            f.write('\n')
 
 
 def main():

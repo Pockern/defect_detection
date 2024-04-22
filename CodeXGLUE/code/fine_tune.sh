@@ -4,12 +4,13 @@ python run.py \
     --tokenizer_name=../../huggingface_models/microsoft/codebert-base/ \
     --model_name_or_path=../../huggingface_models/microsoft/codebert-base/ \
     --do_train \
-    --train_data_file=../dataset/train.jsonl \
-    --eval_data_file=../dataset/valid.jsonl \
-    --test_data_file=../dataset/test.jsonl \
+    --train_data_file=../dataset/testdata/train.jsonl \
+    --eval_data_file=../dataset/testdata/valid.jsonl \
+    --test_data_file=../dataset/testdata/test.jsonl \
     --epoch 5 \
     --block_size 400 \
     --train_batch_size 32 \
+    --gradient_accumulation_steps 1 \
     --eval_batch_size 64 \
     --learning_rate 2e-5 \
     --max_grad_norm 1.0 \

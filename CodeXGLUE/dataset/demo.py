@@ -20,9 +20,13 @@ def len_state(file_name):
 
     len_state = {}
     for object in js_objects:
-        print(object['functions'][0])
-        exit(0)
-        len1 = len(object['functions'])
+        len1 = len(object['functions_before_patches'])
+        if len1 in len_state:
+            len_state[len1] += 1
+        else:
+            len_state[len1] = 1
+
+        len1 = len(object['functions_after_patches'])
         if len1 in len_state:
             len_state[len1] += 1
         else:
@@ -107,9 +111,12 @@ def change_to_dvign(file_name):
 
 
 def main():
-    for file_name in ['./c/train.jsonl', './c/valid.jsonl', './c/test.jsonl']:
-        len_state(file_name)
+    for file_name in ['./testdata/train.jsonl', './testdata/valid.jsonl', './testdata/test.jsonl']:
+        # len_state(file_name)
         len_of_json(file_name)
+    
+    # file_name = './c/test.jsonl'
+    # change_to_dvign(file_name)
         
 
 
