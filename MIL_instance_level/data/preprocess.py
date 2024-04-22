@@ -85,9 +85,9 @@ def remove_comment(code, language):
     :return: cleaned code
     """
     if language == 'c' or language == 'cpp':
-        pattern = r'//.*?$|//.*$'
+        pattern = r'//.*?$|/\*.*?\*/|/\*[\s\S]*?\*/|\*.*?$'
     elif language == 'py':
-        pattern = r'#.*?$|#$'
+        pattern = r'#.*?$|#$|"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|""".*?"""'
         language = 'python'
 
     # 加载语言模块
@@ -122,10 +122,7 @@ def slice(code, language):
     :param language: the PL of code
     :return: list of divided functions, list of function_starts, list of functions_ends
     """
-    if language == 'c' or language == 'cpp':
-        pattern = r'//.*?$|//.*$'
-    elif language == 'py':
-        pattern = r'#.*?$|#$'
+    if language == 'py':
         language = 'python'
 
     # 加载语言模块
@@ -169,8 +166,6 @@ def get_label_of_functions_by_patches(functions_starts, functions_ends, patches_
     functions_label = [0] * len(functions_starts)
     # for each function
     for i in range(len(functions_starts)):
-        function_temp = ''
-        patch_temp = ''
         # for each patch
         for j in range(len(patches_divided_starts)):
             # patch[j] close to this func[i]
@@ -191,9 +186,9 @@ def func(language, file_name, output_dir):
         for idx in range(len(content)):
             object_dict = json.loads(content[idx])
 
-            code_before_patched = object_dict['before']
-            code_after_patched = object_dict['after']
-            
+            code_before_patched =  remove_comment(object_dict['before']['file_code'], object_dict['language'])
+            code_after_patched =  remove_comment(object_dict['after']['file_code'], object_dict['language'])
+
             # divide patches
             patches = object_dict['patches']
             pattern = re.compile(r'@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
@@ -212,25 +207,17 @@ def func(language, file_name, output_dir):
         
             # divide functions
             # bad
-            functions, functions_starts, functions_ends = slice(code_before_patched['file_code'], language)
-
-            # -------------------test------------------------------------------------------------
-            # if object_dict['cwe'] == 'CWE-190' and object_dict['cwe_id'] == '_582_1':
-            #     print(functions_starts)
-            #     print(functions_ends)
-            #     print(patches_divided_starts)
-            # ------------------------------------------------------------------------------------
-
+            functions, functions_starts, functions_ends = slice(code_before_patched, language)
             functions_label = get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts)
             functions_object_list = [FunctionEntry(idx, func, label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_before_patches'] = functions_object_list
-            object_dict['before']['file_code'] = remove_comment(object_dict['before']['file_code'], language)
+            object_dict['before']['file_code'] = code_before_patched
             # good
-            functions, functions_starts, functions_ends = slice(code_after_patched['file_code'], language)
+            functions, functions_starts, functions_ends = slice(code_after_patched, language)
             functions_label = [0] * len(functions)
             functions_object_list = [FunctionEntry(idx, func, label, 0).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_after_patches'] = functions_object_list
-            object_dict['after']['file_code'] = remove_comment(object_dict['after']['file_code'], language)
+            object_dict['after']['file_code'] = code_after_patched
 
             output.append(object_dict)
             print('divide a pair of file: {}'.format(object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id']))
@@ -403,15 +390,15 @@ def main():
     #     output = file_name
     #     func(language, file_name, output)
 
-    for language in language_list:
-        file_name = language + '_divided.jsonl'
-        split_dataset(file_name, language)
-
     # for language in language_list:
-    #     for file in ['train', 'test', 'valid']:
-    #         file_name = os.path.join(language, file + '.jsonl')
-    #         output_dir = file_name
-    #         limit_functions(file_name, output_dir, 1, 50)
+    #     file_name = language + '_divided.jsonl'
+    #     split_dataset(file_name, language)
+
+    for language in language_list:
+        for file in ['train', 'test', 'valid']:
+            file_name = os.path.join(language, file + '.jsonl')
+            output_dir = file_name
+            limit_functions(file_name, output_dir, 1, 50)
 
     # for language in language_list:
     #     for file in ['train.jsonl']:
@@ -424,12 +411,18 @@ def test():
     """
     仅用作测试各种特殊情况
     """
-    file_path = 'dataset_final_sorted/CWE-20/cpp/good_1442_0'
+    file_path = 'dataset_final_sorted/CWE-59/c/bad_436_3'
+    output_dir = 'test.json'
     with open(file_path, 'r') as f:
         content = f.read()
-    functions, functions_start, functions_end = slice(content, 'cpp')
-    print(functions_start)
-    print(functions_end)
+    # print(content)
+
+    obj = {}
+    content = re.sub(r"[\n\t]", "", content)
+    # obj['code'] = content
+    with open(output_dir, 'w') as f:
+        # json.dump(obj, f)
+        f.write(content)
 
 
 if __name__ == '__main__':

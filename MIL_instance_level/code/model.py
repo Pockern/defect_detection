@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from sklearn.metrics import roc_auc_score
 
 class Model(nn.Module):
     def __init__(self, encoder, config, tokenizer, args):
@@ -41,12 +42,22 @@ class Model(nn.Module):
         Z = torch.mm(A, outputs)  # ATTENTION_BRANCHESxM
 
         # [1, 2] tag
-        prob = self.classifier(Z)
+        prob_file = self.classifier(Z)
+        # [k, 2] tag
+        # prob_functions = self.classifier(outputs)
 
         if file_label is not None:
             file_label = file_label.float()
-            loss = torch.log(prob[:,0]+1e-10)*file_label + torch.log((1-prob)[:,0]+1e-10)*(1-file_label)
-            loss = -loss
-            return loss, prob, A
+            functions_labels = functions_labels.float()
+            loss_file = torch.log(prob_file[:,0]+1e-10)*file_label + torch.log((1-prob_file)[:,0]+1e-10)*(1-file_label)
+            # loss_functions = torch.log(prob_functions[:,0]+1e-10)*functions_labels + torch.log((1-prob_functions)[:,0]+1e-10)*(1-functions_labels)
+            # loss = -(0.5 * loss_file + 0.5 * loss_functions.mean())
+            loss=torch.log(prob_file[:,0]+1e-10)*file_label+torch.log((1-prob_file)[:,0]+1e-10)*(1-file_label)
+            return loss, prob_file, A
         else:
-            return prob, A
+            return prob_file, A
+
+
+    def cal_auc_score(self, file_labels, probs):
+        auc = roc_auc_score(file_labels, probs)
+        return auc

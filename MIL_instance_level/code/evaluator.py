@@ -9,14 +9,8 @@ def read_answers(filename):
         for line in f:
             line = line.strip()
             js = json.loads(line)
-            good_idx = js['cwe'] + '/' + js['language'] + '/' + 'good' + js['cwe_id']
-            bad_idx = good_idx.replace('good', 'bad')
-
-            if len(js['functions_after_patches']) > 0:
-                answers[good_idx] = 0
-
-            if len(js['functions_before_patches']) > 0:
-                answers[bad_idx] = 1
+            file_idx = js['file_idx']
+            answers[file_idx] = js['file_label']
 
     return answers
 

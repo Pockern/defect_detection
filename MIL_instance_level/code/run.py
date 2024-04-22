@@ -28,28 +28,19 @@ class InputFeatures(object):
         self.file_idx = file_idx
 
 
-def convert_examples_to_features(object, tokenizer, args, file_key):
+def convert_examples_to_features(object, tokenizer, args):
     """
     convert obj of json file to features that model needs
     :return: inputfeatures
-    """
-    if file_key == 'functions_before_patches':
-        file_type = 'bad'
-    else:
-        file_type = 'good'
-    
+    """    
     input_functions_tokens = []
     input_functions_ids = []
     functions_idx = []
     functions_labels = []
-    file_idx = object['cwe'] + '/' + object['language'] + '/' + file_type + object['cwe_id']
+    file_idx = object['file_idx']
 
-    functions = object[file_key]
-    if len(functions) == 0:
-        return None
-    else:
-        file_label = functions[0]
-        file_label = file_label['bag_label']
+    functions = object['functions'][0]
+    file_label = object['file_label']
     for function in functions:
         code = ' '.join(function['function_code'].split())
         code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
@@ -73,15 +64,7 @@ class TextDataset(Dataset):
         with open(file_path) as f:
             for line in f:
                 js = json.loads(line.strip())
-                feature = convert_examples_to_features(js, tokenizer, args, 'functions_before_patches')
-                if feature is not None:
-                    self.examples.append(feature)
-                feature = convert_examples_to_features(js, tokenizer, args, 'functions_after_patches')
-                if feature is not None:
-                    self.examples.append(feature)
-                
-                # self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_before_patches'))
-                # self.examples.append(convert_examples_to_features(js, tokenizer, args, 'functions_after_patches'))
+                self.examples.append(convert_examples_to_features(js, tokenizer, args))
         if 'train' in file_path:
             for idx, example in enumerate(self.examples[:2]):
                     logger.info("*** Example ***")
@@ -119,7 +102,7 @@ def train(args, train_dataset, model, tokenizer):
 
     # parameter init
     args.max_steps = args.epoch * len(train_dataloader)
-    args.save_steps = len(train_dataloader)
+    args.save_steps = len(train_dataloader) // args.gradient_accumulation_steps
     args.warmup_stemps = len(train_dataloader)
     args.logging_steps = len(train_dataloader)
     model.to(args.device)
@@ -190,19 +173,17 @@ def train(args, train_dataset, model, tokenizer):
                 avg_loss = tr_loss
             avg_loss = round(train_loss / tr_num, 5)
             bar.set_description("epoch {} loss {}".format(idx, avg_loss))
-            global_step += 1
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()
-                del functions_inputs, functions_labels, file_label, loss, logits
-                torch.cuda.empty_cache()
+                global_step += 1
                 
-                avg_loss = round(np.exp((tr_loss - logging_loss) / (global_step - tr_nb)),4)
-                if args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                    logging_loss = tr_loss
-                    tr_nb = global_step
+                # avg_loss = round(np.exp((tr_loss - logging_loss) / (global_step - tr_nb)),4)
+                # if args.logging_steps > 0 and global_step % args.logging_steps == 0:
+                #     logging_loss = tr_loss
+                #     tr_nb = global_step
 
                 if args.save_steps > 0 and global_step % args.save_steps == 0:
                     # check whether eval during train
@@ -258,8 +239,10 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
         with torch.no_grad():
             lm_loss, logit, _ = model(functions_ids, functions_labels, file_label)
             eval_loss += lm_loss.mean().item()
-            logits.append(logit.cpu().numpy())
-            labels.append(file_label.cpu().numpy())
+            logit = logit.cpu().numpy()
+            file_label = file_label.cpu().numpy()
+            logits.append(logit)
+            labels.append(file_label)
         nb_eval_steps += 1
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
@@ -267,10 +250,13 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     eval_acc = np.mean(labels == preds)
     eval_loss = eval_loss / nb_eval_steps
     perplexity = torch.tensor(eval_loss)
-            
+
+    probs = logits[:,0]
+    auc = model.cal_auc_score(labels, probs)
     result = {
         "eval_loss": float(perplexity),
-        "eval_acc":round(eval_acc, 4),
+        "eval_acc": round(eval_acc, 4),
+        "auc": round(auc, 4)
     }
     return result
 
@@ -309,6 +295,7 @@ def test(args, model, tokenizer):
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
+    preds = logits[:,0] > 0.432
 
     with open(os.path.join(args.output_dir, args.language_type + "_predictions.txt"), 'w') as f:
         for example, pred in zip(test_dataset.examples, preds):
@@ -316,6 +303,10 @@ def test(args, model, tokenizer):
                 f.write(str(example.file_idx)+'\t1\n')
             else:
                 f.write(str(example.file_idx)+'\t0\n') 
+    
+    # with open(os.path.join(args.output_dir, args.language_type + "_prob.txt"), 'w') as f:
+    #     for example, pred in zip(test_dataset.examples, logits[:,0]):
+    #             f.write(str(example.file_idx)+'\t{}\n'.format(pred))
 
     with open(os.path.join(args.output_dir, args.language_type + "_attention.txt"), 'w') as f:
         for example, powers, labels in zip(test_dataset.examples, attention_powers, attention_labels):

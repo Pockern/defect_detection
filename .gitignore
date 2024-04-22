@@ -17,3 +17,5 @@ datasets/
 dataset_final_sorted/
 
 huggingface_models/
+
+AttentionDeepMIL/datasets
