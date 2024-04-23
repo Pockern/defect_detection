@@ -2,15 +2,16 @@ import logging
 import sys
 import json
 import numpy as np
-
+  
 def read_answers(filename):
     answers={}
     with open(filename) as f:
         for line in f:
             line = line.strip()
             js = json.loads(line)
-            answers[js['cwe']+'/'+js['language']+'/bad'+js['cwe_id']] = js['before']['file_label']
-            answers[js['cwe']+'/'+js['language']+'/good'+js['cwe_id']] = js['after']['file_label']
+            file_idx = js['file_idx']
+            answers[file_idx] = js['file_label']
+
     return answers
 
 def read_predictions(filename):
@@ -19,19 +20,20 @@ def read_predictions(filename):
         for line in f:
             line = line.strip()
             idx, label = line.split()
-            predictions[idx] = int(label)
+            predictions[str(idx)] = int(label)
+
     return predictions
 
 def calculate_scores(answers,predictions):
-    Acc = []
+    Acc=[]
     for key in answers:
         if key not in predictions:
             logging.error("Missing prediction for index {}.".format(key))
             sys.exit()
         Acc.append(answers[key]==predictions[key])
 
-    scores = {}
-    scores['Acc'] = np.mean(Acc)
+    scores={}
+    scores['Acc']=np.mean(Acc)
     return scores
 
 def main():
@@ -42,9 +44,9 @@ def main():
     
 
     args = parser.parse_args()
-    answers = read_answers(args.answers)
-    predictions = read_predictions(args.predictions)
-    scores = calculate_scores(answers, predictions)
+    answers=read_answers(args.answers)
+    predictions=read_predictions(args.predictions)
+    scores=calculate_scores(answers,predictions)
     print(scores)
 
 if __name__ == '__main__':

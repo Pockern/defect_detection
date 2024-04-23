@@ -10,8 +10,8 @@ import warnings
 from model import Model
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
-from transformers import (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer, AdamW,
-                          get_linear_schedule_with_warmup) 
+from transformers import (RobertaConfig, RobertaForSequenceClassification, RobertaModel,  RobertaTokenizer, AdamW,
+                          get_linear_schedule_with_warmup)
 
 # init logger
 logger = logging.getLogger(__name__)
@@ -20,31 +20,31 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 # class to shape training input features
 class InputFeatures(object):
     def __init__(self, input_tokens, input_ids, file_idx, label):
-        # TODO
         self.input_tokens = input_tokens
         self.input_ids = input_ids
         self.idx = file_idx
         self.label = label
 
 
-def convert_examples_to_features(object, tokenizer, args, file_key):
+def convert_examples_to_features(object, tokenizer, args):
     """
     convert obj of json file to features that model needs
     :return: inputfeatures
-    """
-    if file_key == 'before':
-        file_type = 'bad'
-    else:
-        file_type = 'good'
-    code = ' '.join(object[file_key]['file_code'].split())
+    """    
+    file_label = object['file_label']
+    file_idx = object['file_idx']
+
+    code = ' '.join(object['file_code'][0].split())
     code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
-    source_tokens = [tokenizer.cls_token]+code_tokens+[tokenizer.sep_token]
-    source_ids =  tokenizer.convert_tokens_to_ids(source_tokens)
+    source_tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.sep_token]
+    source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
     padding_length = args.block_size - len(source_ids)
-    source_ids += [tokenizer.pad_token_id]*padding_length
-    return InputFeatures(source_tokens, source_ids, 
-                         object['cwe']+'/'+object['language']+'/'+file_type+object['cwe_id'], 
-                         object[file_key]['file_label'])
+    source_ids += [tokenizer.pad_token_id] * padding_length
+
+    input_file_tokens = source_tokens
+    input_file_ids = source_ids
+
+    return InputFeatures(input_file_tokens, input_file_ids, file_idx, file_label)
 
 
 # dataset class for get features from file with notification
@@ -54,22 +54,21 @@ class TextDataset(Dataset):
         with open(file_path) as f:
             for line in f:
                 js = json.loads(line.strip())
-                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'before'))
-                self.examples.append(convert_examples_to_features(js, tokenizer, args, 'after'))
+                self.examples.append(convert_examples_to_features(js, tokenizer, args))
         if 'train' in file_path:
             for idx, example in enumerate(self.examples[:2]):
                     logger.info("*** Example ***")
-                    logger.info("idx: {}".format(idx))
                     logger.info("file_id: {}".format(example.idx))
-                    logger.info("label: {}".format(example.label))
-                    logger.info("input_tokens: {}".format([x.replace('\u0120','_') for x in example.input_tokens]))
-                    logger.info("input_ids: {}".format(' '.join(map(str, example.input_ids))))
+                    logger.info('file label: {}'.format(example.label))
+                    logger.info("input file tokens: {}".format([x.replace('\u0120','_') for x in example.input_tokens]))
+                    logger.info("intput file ids: {}".format(' '.join(map(str, example.input_ids))))
     
     def __len__(self):
         return len(self.examples)
     
     def __getitem__(self, index):
         return torch.tensor(self.examples[index].input_ids), torch.tensor(self.examples[index].label)
+
 
 
 def set_seed(seed=42):
@@ -235,9 +234,11 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     eval_loss = eval_loss / nb_eval_steps
     perplexity = torch.tensor(eval_loss)
             
+    auc = model.cal_auc_score(labels, logits[:,0])
     result = {
         "eval_loss": float(perplexity),
         "eval_acc":round(eval_acc, 4),
+        "auc": round(auc, 4)
     }
     return result
 
@@ -379,8 +380,8 @@ def main():
     config = RobertaConfig.from_pretrained(args.model_name_or_path)
     # Classification tasks: 
     config.num_labels = 1
-    # model = RobertaModel.from_pretrained(args.model_name_or_path)
-    model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path)
+    model = RobertaModel.from_pretrained(args.model_name_or_path)
+    # model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path)
 
     model = Model(model, config, tokenizer, args)
 

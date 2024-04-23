@@ -5,7 +5,7 @@ python run.py \
     --eval_data_file=../data/c/valid.jsonl \
     --test_data_file=../data/c/test.jsonl \
     --model_name_or_path=../../huggingface_models/microsoft/codebert-base/ \
-    --epoch 5 \
+    --epoch 20 \
     --block_size 400 \
     --train_batch_size 32 \
     --eval_batch_size 64 \
