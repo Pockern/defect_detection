@@ -1,11 +1,11 @@
 python run.py \
     --output_dir=./saved_models \
-    --language_type=c \
-    --train_data_file=../data/c/train.jsonl \
-    --eval_data_file=../data/c/valid.jsonl \
-    --test_data_file=../data/c/test.jsonl \
+    --language_type=py \
+    --train_data_file=../data/py/train.jsonl \
+    --eval_data_file=../data/py/valid.jsonl \
+    --test_data_file=../data/py/test.jsonl \
     --model_name_or_path=../../huggingface_models/microsoft/codebert-base/ \
-    --epoch 100 \
+    --epoch 20 \
     --block_size 400 \
     --train_batch_size 1 \
     --eval_batch_size 1 \

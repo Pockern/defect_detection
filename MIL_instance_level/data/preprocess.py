@@ -187,7 +187,7 @@ def func(language, file_name, output_dir):
             object_dict = json.loads(content[idx])
 
             # -------------------------- test ----------------------------------
-            # if object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id'] != 'CWE-264/c/_5676_4':
+            # if object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id'] != 'CWE-399/cpp/bad_1539_2':
             #     continue
             # ------------------------------------------------------------------
 
@@ -224,15 +224,13 @@ def func(language, file_name, output_dir):
             # bad
             functions, functions_starts, functions_ends = slice(code_before_patched, language)
             functions_label = get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts)
-            functions_object_list = [FunctionEntry(idx, func, label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
+            functions_object_list = [FunctionEntry(idx, remove_comment(func, language), label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_before_patches'] = functions_object_list
-            # object_dict['before']['file_code'] = code_before_patched
             # good
             functions, functions_starts, functions_ends = slice(code_after_patched, language)
             functions_label = [0] * len(functions)
             functions_object_list = [FunctionEntry(idx, remove_comment(func, language), label, 0).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_after_patches'] = functions_object_list
-            # object_dict['after']['file_code'] = code_after_patched
 
             output.append(object_dict)
             print('divide a pair of file: {}'.format(object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id']))
@@ -415,11 +413,11 @@ def main():
     #         output_dir = file_name
     #         limit_functions(file_name, output_dir, 1, 15)
 
-    # for language in language_list:
-    #     for file in ['train.jsonl']:
-    #         file_name = os.path.join(language, file)
-    #         output_dir = file_name
-    #         limit_functions(file_name, output_dir, 1, 15)
+    for language in language_list:
+        for file in ['train.jsonl']:
+            file_name = os.path.join(language, file)
+            output_dir = file_name
+            limit_functions(file_name, output_dir, 1, 60)
 
 
 def test():
@@ -427,8 +425,7 @@ def test():
     仅用作测试各种特殊情况
     """
     # file_path = 'dataset_final_sorted/CWE-264/c/bad_2399_0'
-    file_path = 'c_divided.jsonl'
-    file_idx = 'dataset_final_sorted/CWE-264/c/_2399_0'
+    file_path = 'cpp_divided.jsonl'
     output_dir = 'test.json'
     func('c', file_path, output_dir)
 

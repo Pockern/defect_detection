@@ -138,7 +138,7 @@ def main():
     for language in ['c', 'cpp', 'py']:
         for file in ['train.jsonl', 'valid.jsonl', 'test.jsonl']:
             file_name = os.path.join(language, file)
-            function_state(file_name)
+            # function_state(file_name)
             # len_of_json(file_name)
             bag_state(file_name)
             # has_repeat(file_name)

@@ -1,12 +1,12 @@
-04/22/2024 22:27:01 - INFO - __main__ -   Training/evaluation parameters Namespace(train_data_file='../data/cpp/train.jsonl', output_dir='./saved_models', language_type='cpp', eval_data_file='../data/cpp/valid.jsonl', test_data_file='../data/cpp/test.jsonl', model_name_or_path='../../huggingface_models/microsoft/codebert-base/', block_size=400, do_train=False, do_eval=True, do_test=True, evaluate_during_training=True, train_batch_size=1, eval_batch_size=1, gradient_accumulation_steps=1, learning_rate=2e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, epoch=5, max_steps=-1, warmup_steps=0, logging_steps=50, save_steps=50, seed=123456, min_loss_delta=0.001, dropout_probability=0, device=device(type='cuda'), n_gpu=1, start_epoch=0, start_step=0)
-04/22/2024 22:27:04 - INFO - __main__ -   ***** Running evaluation *****
-04/22/2024 22:27:04 - INFO - __main__ -     Num examples = 36
-04/22/2024 22:27:04 - INFO - __main__ -     Batch size = 1
-04/22/2024 22:27:08 - INFO - __main__ -   ***** Eval results *****
-04/22/2024 22:27:08 - INFO - __main__ -     auc = 0.6053
-04/22/2024 22:27:08 - INFO - __main__ -     eval_acc = 0.4722
-04/22/2024 22:27:08 - INFO - __main__ -     eval_loss = 0.6708
-04/22/2024 22:27:09 - INFO - __main__ -   ***** Running Test *****
-04/22/2024 22:27:09 - INFO - __main__ -     Num examples = 33
-04/22/2024 22:27:09 - INFO - __main__ -     Batch size = 1
-  0%|          | 0/33 [00:00<?, ?it/s]  6%|▌         | 2/33 [00:00<00:02, 15.42it/s] 12%|█▏        | 4/33 [00:00<00:02, 13.01it/s] 27%|██▋       | 9/33 [00:00<00:00, 25.05it/s] 36%|███▋      | 12/33 [00:00<00:01, 14.68it/s] 52%|█████▏    | 17/33 [00:00<00:00, 20.11it/s] 61%|██████    | 20/33 [00:01<00:00, 21.86it/s] 73%|███████▎  | 24/33 [00:01<00:00, 20.99it/s] 88%|████████▊ | 29/33 [00:01<00:00, 25.78it/s] 97%|█████████▋| 32/33 [00:01<00:00, 23.58it/s]100%|██████████| 33/33 [00:01<00:00, 21.79it/s]
+04/23/2024 17:55:36 - INFO - __main__ -   Training/evaluation parameters Namespace(train_data_file='../data/py/train.jsonl', output_dir='./saved_models', language_type='py', eval_data_file='../data/py/valid.jsonl', test_data_file='../data/py/test.jsonl', model_name_or_path='../../huggingface_models/microsoft/codebert-base/', block_size=400, do_train=False, do_eval=True, do_test=True, evaluate_during_training=False, train_batch_size=1, eval_batch_size=1, gradient_accumulation_steps=1, learning_rate=2e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, epoch=5, max_steps=-1, warmup_steps=0, logging_steps=50, save_steps=50, seed=123456, min_loss_delta=0.001, dropout_probability=0, device=device(type='cuda'), n_gpu=1, start_epoch=0, start_step=0)
+04/23/2024 17:55:39 - INFO - __main__ -   ***** Running evaluation *****
+04/23/2024 17:55:39 - INFO - __main__ -     Num examples = 52
+04/23/2024 17:55:39 - INFO - __main__ -     Batch size = 1
+04/23/2024 17:55:46 - INFO - __main__ -   ***** Eval results *****
+04/23/2024 17:55:46 - INFO - __main__ -     auc = 0.5015
+04/23/2024 17:55:46 - INFO - __main__ -     eval_acc = 0.5577
+04/23/2024 17:55:46 - INFO - __main__ -     eval_loss = 0.8369
+04/23/2024 17:55:48 - INFO - __main__ -   ***** Running Test *****
+04/23/2024 17:55:48 - INFO - __main__ -     Num examples = 54
+04/23/2024 17:55:48 - INFO - __main__ -     Batch size = 1
+  0%|          | 0/54 [00:00<?, ?it/s]  9%|▉         | 5/54 [00:00<00:01, 31.78it/s] 17%|█▋        | 9/54 [00:00<00:01, 28.33it/s] 22%|██▏       | 12/54 [00:00<00:01, 27.69it/s] 28%|██▊       | 15/54 [00:00<00:02, 19.45it/s] 35%|███▌      | 19/54 [00:00<00:02, 16.56it/s] 39%|███▉      | 21/54 [00:01<00:01, 16.76it/s] 46%|████▋     | 25/54 [00:01<00:01, 21.27it/s] 52%|█████▏    | 28/54 [00:01<00:01, 22.14it/s] 57%|█████▋    | 31/54 [00:01<00:01, 22.36it/s] 63%|██████▎   | 34/54 [00:01<00:00, 22.40it/s] 69%|██████▊   | 37/54 [00:01<00:00, 19.35it/s] 74%|███████▍  | 40/54 [00:01<00:00, 18.88it/s] 80%|███████▉  | 43/54 [00:02<00:00, 18.15it/s] 83%|████████▎ | 45/54 [00:02<00:00, 18.11it/s] 87%|████████▋ | 47/54 [00:02<00:00, 17.45it/s] 91%|█████████ | 49/54 [00:03<00:00,  7.51it/s] 96%|█████████▋| 52/54 [00:03<00:00,  6.27it/s]100%|██████████| 54/54 [00:03<00:00,  7.01it/s]100%|██████████| 54/54 [00:03<00:00, 13.91it/s]
