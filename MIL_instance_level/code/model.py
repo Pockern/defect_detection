@@ -53,6 +53,7 @@ class Model(nn.Module):
             # loss_functions = torch.log(prob_functions[:,0]+1e-10)*functions_labels + torch.log((1-prob_functions)[:,0]+1e-10)*(1-functions_labels)
             # loss = -(0.5 * loss_file + 0.5 * loss_functions.mean())
             loss=torch.log(prob_file[:,0]+1e-10)*file_label+torch.log((1-prob_file)[:,0]+1e-10)*(1-file_label)
+            loss = -loss.mean()
             return loss, prob_file, A
         else:
             return prob_file, A

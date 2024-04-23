@@ -117,13 +117,31 @@ def bag_state(file_name):
     print('{}: good bag {} / bad bag {}'.format(file_name, pos, neg))
 
 
+def has_repeat(file_name):
+    file_list = []
+    tag = 0
+    with open(file_name, 'r') as f:
+        objects = [json.loads(line) for line in f]
+    
+    for object in objects:
+        if not object['file_idx'] in file_list:
+            file_list.append(object['file_idx'])
+        else:
+            tag = 1
+            print('{}'.format(object['file_idx']))
+
+    if tag == 0:
+        print('no repeat file')
+
+
 def main():
     for language in ['c', 'cpp', 'py']:
         for file in ['train.jsonl', 'valid.jsonl', 'test.jsonl']:
             file_name = os.path.join(language, file)
-            # function_state(file_name)
+            function_state(file_name)
             # len_of_json(file_name)
             bag_state(file_name)
+            # has_repeat(file_name)
         
 
 

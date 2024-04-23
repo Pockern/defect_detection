@@ -66,7 +66,7 @@ class TextDataset(Dataset):
                 js = json.loads(line.strip())
                 self.examples.append(convert_examples_to_features(js, tokenizer, args))
         if 'train' in file_path:
-            for idx, example in enumerate(self.examples[:2]):
+            for idx, example in enumerate(self.examples[:5]):
                     logger.info("*** Example ***")
                     logger.info("file_id: {}".format(example.file_idx))
                     logger.info('file label: {}'.format(example.file_label))
@@ -303,16 +303,15 @@ def test(args, model, tokenizer):
                 f.write(str(example.file_idx)+'\t1\n')
             else:
                 f.write(str(example.file_idx)+'\t0\n') 
-    
-    # with open(os.path.join(args.output_dir, args.language_type + "_prob.txt"), 'w') as f:
-    #     for example, pred in zip(test_dataset.examples, logits[:,0]):
-    #             f.write(str(example.file_idx)+'\t{}\n'.format(pred))
 
     with open(os.path.join(args.output_dir, args.language_type + "_attention.txt"), 'w') as f:
         for example, powers, labels in zip(test_dataset.examples, attention_powers, attention_labels):
             f.write(str(example.file_idx)+':\t')
             for power, label in zip(powers, labels):
-                f.write(str(label)+':'+str(power)+'\t')
+                f.write(str(label))
+                f.write('\t')
+                for p, l in zip(power, label):
+                    f.write(str(l)+':'+str(p)+'\t')
             f.write('\n')
 
 

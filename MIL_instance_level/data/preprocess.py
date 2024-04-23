@@ -186,11 +186,26 @@ def func(language, file_name, output_dir):
         for idx in range(len(content)):
             object_dict = json.loads(content[idx])
 
-            code_before_patched =  remove_comment(object_dict['before']['file_code'], object_dict['language'])
-            code_after_patched =  remove_comment(object_dict['after']['file_code'], object_dict['language'])
+            # -------------------------- test ----------------------------------
+            # if object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id'] != 'CWE-264/c/_5676_4':
+            #     continue
+            # ------------------------------------------------------------------
+
+            code_before_patched =  object_dict['before']['file_code']
+            # code_before_patched =  remove_comment(object_dict['before']['file_code'], object_dict['language'])
+            # with open('before_patched.c', 'w') as f:
+            #     f.write(code_before_patched)
+
+            code_after_patched =  object_dict['after']['file_code']
+            # code_after_patched =  remove_comment(object_dict['after']['file_code'], object_dict['language'])
+            # with open('after_patched.c', 'w') as f:
+            #     f.write(code_after_patched)
 
             # divide patches
             patches = object_dict['patches']
+            # with open('patches.c', 'w') as f:
+            #     f.write(patches)
+
             pattern = re.compile(r'@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
             matches = pattern.findall(patches)
             patch_divided_temp = patches.split('@@')
@@ -211,13 +226,13 @@ def func(language, file_name, output_dir):
             functions_label = get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts)
             functions_object_list = [FunctionEntry(idx, func, label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_before_patches'] = functions_object_list
-            object_dict['before']['file_code'] = code_before_patched
+            # object_dict['before']['file_code'] = code_before_patched
             # good
             functions, functions_starts, functions_ends = slice(code_after_patched, language)
             functions_label = [0] * len(functions)
-            functions_object_list = [FunctionEntry(idx, func, label, 0).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
+            functions_object_list = [FunctionEntry(idx, remove_comment(func, language), label, 0).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_after_patches'] = functions_object_list
-            object_dict['after']['file_code'] = code_after_patched
+            # object_dict['after']['file_code'] = code_after_patched
 
             output.append(object_dict)
             print('divide a pair of file: {}'.format(object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id']))
@@ -394,11 +409,11 @@ def main():
     #     file_name = language + '_divided.jsonl'
     #     split_dataset(file_name, language)
 
-    for language in language_list:
-        for file in ['train', 'test', 'valid']:
-            file_name = os.path.join(language, file + '.jsonl')
-            output_dir = file_name
-            limit_functions(file_name, output_dir, 1, 50)
+    # for language in language_list:
+    #     for file in ['train', 'test', 'valid']:
+    #         file_name = os.path.join(language, file + '.jsonl')
+    #         output_dir = file_name
+    #         limit_functions(file_name, output_dir, 1, 15)
 
     # for language in language_list:
     #     for file in ['train.jsonl']:
@@ -411,18 +426,11 @@ def test():
     """
     仅用作测试各种特殊情况
     """
-    file_path = 'dataset_final_sorted/CWE-59/c/bad_436_3'
+    # file_path = 'dataset_final_sorted/CWE-264/c/bad_2399_0'
+    file_path = 'c_divided.jsonl'
+    file_idx = 'dataset_final_sorted/CWE-264/c/_2399_0'
     output_dir = 'test.json'
-    with open(file_path, 'r') as f:
-        content = f.read()
-    # print(content)
-
-    obj = {}
-    content = re.sub(r"[\n\t]", "", content)
-    # obj['code'] = content
-    with open(output_dir, 'w') as f:
-        # json.dump(obj, f)
-        f.write(content)
+    func('c', file_path, output_dir)
 
 
 if __name__ == '__main__':
