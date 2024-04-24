@@ -3,10 +3,10 @@ python run.py \
     --model_name_or_path=../../huggingface_models/microsoft/codebert-base/ \
     --do_eval \
     --do_test \
-    --language_type=py \
-    --train_data_file=../data/py/train.jsonl \
-    --eval_data_file=../data/py/valid.jsonl \
-    --test_data_file=../data/py/test.jsonl \
+    --language_type=c \
+    --train_data_file=../data/c/train.jsonl \
+    --eval_data_file=../data/c/valid.jsonl \
+    --test_data_file=../data/c/test.jsonl \
     --epoch 5 \
     --block_size 400 \
     --train_batch_size 1 \

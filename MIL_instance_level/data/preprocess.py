@@ -6,6 +6,7 @@ import warnings
 import random
 
 from tree_sitter import Language, Parser
+from sklearn.model_selection import train_test_split
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 
@@ -294,12 +295,13 @@ def dump_files_by_language_from_subfolder(root_folder, language, output_dir):
     print('collect {} pairs of good/bad files from {}'.format(file_idx+1, language))
 
 
-def split_dataset(file_name, language):
+def split_dataset(file_name, language, seed):
     output_dir = language
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
     # parameter init
+    random.seed(seed)
     train_data_file = os.path.join(output_dir, 'train.jsonl')
     valid_data_file = os.path.join(output_dir, 'valid.jsonl')
     test_data_file = os.path.join(output_dir, 'test.jsonl')
@@ -310,6 +312,7 @@ def split_dataset(file_name, language):
     with open(file_name, 'r', encoding='utf-8') as f:
         data = [json.loads(line.strip()) for line in f]
 
+    random.shuffle(data)
     files = []
     for cnt, object in enumerate(data):
         file_idx = object['cwe'] + '/bad'+object['cwe_id']
@@ -321,6 +324,8 @@ def split_dataset(file_name, language):
         file_label = 1
         if len(functions) > 0 and cnt % 2 == 0:
             files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+        # if len(functions) > 0:
+        #     files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
 
         # -------------good -----------------------------------s
         file_idx = file_idx.replace('bad', 'good')
@@ -332,6 +337,8 @@ def split_dataset(file_name, language):
         file_label = 0
         if len(functions) > 0 and cnt % 2 != 0:
             files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+        # if len(functions) > 0:
+        #     files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
 
     
     total_len = len(files)
@@ -383,13 +390,6 @@ def limit_functions(file_name, output_dir, limit_low, limit_high):
     print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
 
 
-def adjust_positive_negetive_ratio(file_name, ratio):
-    with open(file_name, 'r') as f:
-        objects = [json.loads(line) for line in f]
-    
-    # TODO
-
-
 def main():
     root_folder = 'dataset_final_sorted'
     language_list = ['c', 'cpp', 'py']
@@ -403,21 +403,21 @@ def main():
     #     output = file_name
     #     func(language, file_name, output)
 
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     split_dataset(file_name, language)
-
-    # for language in language_list:
-    #     for file in ['train', 'test', 'valid']:
-    #         file_name = os.path.join(language, file + '.jsonl')
-    #         output_dir = file_name
-    #         limit_functions(file_name, output_dir, 1, 15)
+    for language in language_list:
+        file_name = language + '_divided.jsonl'
+        split_dataset(file_name, language, 123456)
 
     for language in language_list:
-        for file in ['train.jsonl']:
-            file_name = os.path.join(language, file)
+        for file in ['train', 'test', 'valid']:
+            file_name = os.path.join(language, file + '.jsonl')
             output_dir = file_name
-            limit_functions(file_name, output_dir, 1, 60)
+            limit_functions(file_name, output_dir, 1, 15)
+
+    # for language in language_list:
+    #     for file in ['train.jsonl']:
+    #         file_name = os.path.join(language, file)
+    #         output_dir = file_name
+    #         limit_functions(file_name, output_dir, 1, 15)
 
 
 def test():

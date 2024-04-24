@@ -57,8 +57,3 @@ class Model(nn.Module):
             return loss, prob_file, A
         else:
             return prob_file, A
-
-
-    def cal_auc_score(self, file_labels, probs):
-        auc = roc_auc_score(file_labels, probs)
-        return auc

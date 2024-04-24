@@ -19,3 +19,7 @@ dataset_final_sorted/
 huggingface_models/
 
 best_model/
+
+interPVD/
+
+testdata/
