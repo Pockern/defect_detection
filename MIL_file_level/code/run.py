@@ -230,15 +230,19 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
-    eval_acc = np.mean(labels == preds)
     eval_loss = eval_loss / nb_eval_steps
     perplexity = torch.tensor(eval_loss)
-            
-    auc = model.cal_auc_score(labels, logits[:,0])
+
+    acc = model.cal_acc(labels, preds)
+    precision = model.cal_precision(labels, preds)
+    f1 = model.cal_f1(labels, preds)
+    recall = model.cal_recall(labels, preds)
     result = {
         "eval_loss": float(perplexity),
-        "eval_acc":round(eval_acc, 4),
-        "auc": round(auc, 4)
+        "eval_acc":round(acc, 4),
+        "eval_precision": round(precision, 4),
+        "eval_f1": round(f1, 4),
+        "eval_recall": round(recall, 4)
     }
     return result
 
@@ -273,12 +277,26 @@ def test(args, model, tokenizer):
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
+
+    acc = model.cal_acc(labels, preds)
+    precision = model.cal_precision(labels, preds)
+    f1 = model.cal_f1(labels, preds)
+    recall = model.cal_recall(labels, preds)
+
     with open(os.path.join(args.output_dir, args.language_type + "_predictions.txt"), 'w') as f:
         for example, pred in zip(test_dataset.examples, preds):
             if pred:
                 f.write(str(example.idx)+'\t1\n')
             else:
                 f.write(str(example.idx)+'\t0\n') 
+    
+    result = {
+        "test_acc":round(acc, 4),
+        "test_precision": round(precision, 4),
+        "test_f1": round(f1, 4),
+        "test_recall": round(recall, 4)
+    }
+    return result
 
 
 def main():
@@ -407,7 +425,10 @@ def main():
         output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))  
         model.load_state_dict(torch.load(output_dir))                  
         model.to(args.device)
-        test(args, model, tokenizer)
+        result = test(args, model, tokenizer)
+        logger.info("***** test results *****")
+        for key in sorted(result.keys()):
+            logger.info("  %s = %s", key, str(round(result[key], 4)))
 
 if __name__ == '__main__':
     main()

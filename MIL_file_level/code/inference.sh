@@ -4,14 +4,12 @@ python run.py \
     --do_eval \
     --do_test \
     --language_type=c \
-    --train_data_file=../data/c/train.jsonl \
-    --eval_data_file=../data/c/valid.jsonl \
-    --test_data_file=../data/c/test.jsonl \
-    --epoch 5 \
+    --train_data_file=../../MIL_instance_level/data/c/train.jsonl \
+    --eval_data_file=../../MIL_instance_level/data/c/valid.jsonl \
+    --test_data_file=../../MIL_instance_level/data/c/test.jsonl \
     --block_size 400 \
-    --train_batch_size 32 \
+    --train_batch_size 16 \
     --eval_batch_size 64 \
     --learning_rate 2e-5 \
     --max_grad_norm 1.0 \
-    --evaluate_during_training \
     --seed 123456 2>&1 | tee ../log/test.log

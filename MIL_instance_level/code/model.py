@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 
 class Model(nn.Module):
     def __init__(self, encoder, config, tokenizer, args):
@@ -57,3 +57,15 @@ class Model(nn.Module):
             return loss, prob_file, A
         else:
             return prob_file, A
+        
+    def cal_precision(self, labels, preds):
+        return precision_score(labels, preds, zero_division=0)
+
+    def cal_recall(self, labels, preds):
+        return recall_score(labels, preds, zero_division=0)
+    
+    def cal_f1(self, labels, preds):
+        return f1_score(labels, preds, zero_division=0)
+    
+    def cal_acc(self, labels, preds):
+        return accuracy_score(labels, preds)

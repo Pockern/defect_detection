@@ -1,27 +1,17 @@
-.ipynb_checkpoints/
-
 saved_models/
 
 __pycache__/
+
+dataset_final_sorted/
+
+huggingface_models/
+
+vendor/
+
+log/
 
 *.jsonl
 
 *.json
 
 *.zip
-
-vendor/
-
-datasets/
-
-dataset_final_sorted/
-
-huggingface_models/
-
-best_model/
-
-interPVD/
-
-testdata/
-
-MIL_instance_level/log

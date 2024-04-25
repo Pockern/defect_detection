@@ -6,11 +6,10 @@ import warnings
 import random
 
 from tree_sitter import Language, Parser
-from sklearn.model_selection import train_test_split
 
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-# # 构筑语言模块
+# 构筑语言模块
 # Language.build_library(
 #     'parser/languages.so',
 #     [
@@ -63,9 +62,10 @@ class FunctionEntry:
     
 
 class DatasetEntry:
-    def __init__(self, file_idx, functions, language, file_label):
+    def __init__(self, file_idx, functions, file_code, language, file_label):
         self.file_idx = file_idx
         self.functions = functions,
+        self.file_code = file_code,
         self.language = language,
         self.file_label = file_label
 
@@ -73,6 +73,7 @@ class DatasetEntry:
         return {
             "file_idx": self.file_idx,
             "functions": self.functions,
+            "file_code": self.file_code,
             "language": self.language,
             "file_label": self.file_label
         }
@@ -187,11 +188,6 @@ def func(language, file_name, output_dir):
         for idx in range(len(content)):
             object_dict = json.loads(content[idx])
 
-            # -------------------------- test ----------------------------------
-            # if object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id'] != 'CWE-399/cpp/bad_1539_2':
-            #     continue
-            # ------------------------------------------------------------------
-
             code_before_patched =  object_dict['before']['file_code']
             # code_before_patched =  remove_comment(object_dict['before']['file_code'], object_dict['language'])
             # with open('before_patched.c', 'w') as f:
@@ -227,11 +223,13 @@ def func(language, file_name, output_dir):
             functions_label = get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts)
             functions_object_list = [FunctionEntry(idx, remove_comment(func, language), label, 1).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_before_patches'] = functions_object_list
+            object_dict['before'] = remove_comment(code_before_patched, language)
             # good
             functions, functions_starts, functions_ends = slice(code_after_patched, language)
             functions_label = [0] * len(functions)
             functions_object_list = [FunctionEntry(idx, remove_comment(func, language), label, 0).to_dict() for idx, (func, label) in enumerate(zip(functions, functions_label))]
             object_dict['functions_after_patches'] = functions_object_list
+            object_dict['after'] = remove_comment(code_after_patched, language)
 
             output.append(object_dict)
             print('divide a pair of file: {}'.format(object_dict['cwe'] + '/' + language + '/' + object_dict['cwe_id']))
@@ -312,31 +310,33 @@ def split_dataset(file_name, language, seed):
     with open(file_name, 'r', encoding='utf-8') as f:
         data = [json.loads(line.strip()) for line in f]
 
-    random.shuffle(data)
+    # random.shuffle(data)
     files = []
     for cnt, object in enumerate(data):
         file_idx = object['cwe'] + '/bad'+object['cwe_id']
         functions = object['functions_before_patches']
+        file_code = object['before']
         # 除去 \n\t
         for function in functions:
             function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
         language = object['language']
         file_label = 1
         if len(functions) > 0 and cnt % 2 == 0:
-            files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+            files.append(DatasetEntry(file_idx, functions, file_code, language, file_label).to_dict())
         # if len(functions) > 0:
         #     files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
 
         # -------------good -----------------------------------s
         file_idx = file_idx.replace('bad', 'good')
         functions = object['functions_after_patches']
+        file_code = object['after']
         # 除去 \n\t
         for function in functions:
             function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
         language = object['language']
         file_label = 0
         if len(functions) > 0 and cnt % 2 != 0:
-            files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+            files.append(DatasetEntry(file_idx, functions, file_code, language, file_label).to_dict())
         # if len(functions) > 0:
         #     files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
 
@@ -392,26 +392,26 @@ def limit_functions(file_name, output_dir, limit_low, limit_high):
 
 def main():
     root_folder = 'dataset_final_sorted'
-    language_list = ['c', 'cpp', 'py']
+    language_list = ['c', 'py', 'js', 'java', 'php']
 
     # for language in language_list:
     #     file_name = language + '_divided.jsonl'
     #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
 
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     output = file_name
-    #     func(language, file_name, output)
-
     for language in language_list:
         file_name = language + '_divided.jsonl'
-        split_dataset(file_name, language, 123456)
+        output = file_name
+        func(language, file_name, output)
 
-    for language in language_list:
-        for file in ['train', 'test', 'valid']:
-            file_name = os.path.join(language, file + '.jsonl')
-            output_dir = file_name
-            limit_functions(file_name, output_dir, 1, 15)
+    # for language in language_list:
+    #     file_name = language + '_divided.jsonl'
+    #     split_dataset(file_name, language, 123456)
+
+    # for language in language_list:
+    #     for file in ['train', 'test', 'valid']:
+    #         file_name = os.path.join(language, file + '.jsonl')
+    #         output_dir = file_name
+    #         limit_functions(file_name, output_dir, 1, 64)
 
     # for language in language_list:
     #     for file in ['train.jsonl']:

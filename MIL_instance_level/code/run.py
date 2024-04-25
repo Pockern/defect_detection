@@ -192,16 +192,13 @@ def train(args, train_dataset, model, tokenizer):
                         for key, value in results.items():
                             logger.info("  %s = %s", key, round(value,4))
 
-                    # if results['eval_acc'] > best_acc:
-                    if results['auc'] > best_acc:
-                            # best_acc = results['eval_acc']
-                            best_acc = results['auc']
+                    if results['eval_acc'] > best_acc and results['eval_f1'] != 0.0:
+                            best_acc = results['eval_acc']
                             logger.info("  "+"*"*20)  
-                            logger.info("  Best auc:%s", round(best_acc, 4))
+                            logger.info("  Best acc:%s", round(best_acc, 4))
                             logger.info("  "+"*"*20)                          
                             
-                            checkpoint_prefix = 'checkpoint-best-auc'
-                            # checkpoint_prefix = 'checkpoint-best-acc'
+                            checkpoint_prefix = 'checkpoint-best-acc'
                             output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))                        
                             if not os.path.exists(output_dir):
                                 os.makedirs(output_dir)                        
@@ -250,16 +247,19 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
-    eval_acc = np.mean(labels == preds)
     eval_loss = eval_loss / nb_eval_steps
     perplexity = torch.tensor(eval_loss)
 
-    probs = logits[:,0]
-    auc = model.cal_auc_score(labels, probs)
+    acc = model.cal_acc(labels, preds)
+    precision = model.cal_precision(labels, preds)
+    f1 = model.cal_f1(labels, preds)
+    recall = model.cal_recall(labels, preds)
     result = {
         "eval_loss": float(perplexity),
-        "eval_acc": round(eval_acc, 4),
-        "auc": round(auc, 4)
+        "eval_acc":round(acc, 4),
+        "eval_precision": round(precision, 4),
+        "eval_f1": round(f1, 4),
+        "eval_recall": round(recall, 4)
     }
     return result
 
@@ -298,7 +298,10 @@ def test(args, model, tokenizer):
     logits = np.concatenate(logits,0)
     labels = np.concatenate(labels,0)
     preds = logits[:,0] > 0.5
-    preds = logits[:,0] > 0.432
+    acc = model.cal_acc(labels, preds)
+    precision = model.cal_precision(labels, preds)
+    f1 = model.cal_f1(labels, preds)
+    recall = model.cal_recall(labels, preds)
 
     with open(os.path.join(args.output_dir, args.language_type + "_predictions.txt"), 'w') as f:
         for example, pred in zip(test_dataset.examples, preds):
@@ -316,6 +319,14 @@ def test(args, model, tokenizer):
                 for p, l in zip(power, label):
                     f.write(str(l)+':'+str(p)+'\t')
             f.write('\n')
+    
+    result = {
+        "test_acc":round(acc, 4),
+        "test_precision": round(precision, 4),
+        "test_f1": round(f1, 4),
+        "test_recall": round(recall, 4)
+    }
+    return result
 
 
 def main():
@@ -425,8 +436,6 @@ def main():
 
     if args.do_eval:
         checkpoint_prefix = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
-        # checkpoint_prefix = 'checkpoint-best-auc/' + args.language_type + '_model.bin'
-        # checkpoint_prefix = 'best_model/' + args.language_type + '_model.bin'
         output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))  
         model.load_state_dict(torch.load(output_dir))
         model.to(args.device)
@@ -437,12 +446,13 @@ def main():
 
     if args.do_test:
         checkpoint_prefix = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
-        # checkpoint_prefix = 'checkpoint-best-auc/' + args.language_type + '_model.bin'
-        # checkpoint_prefix = 'best_model/' + args.language_type + '_model.bin'
         output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))
         model.load_state_dict(torch.load(output_dir))                  
         model.to(args.device)
-        test(args, model, tokenizer)
+        result = test(args, model, tokenizer)
+        logger.info("***** Test results *****")
+        for key in sorted(result.keys()):
+            logger.info("  %s = %s", key, str(round(result[key], 4)))
 
 if __name__ == '__main__':
     main()
