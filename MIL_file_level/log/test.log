@@ -1,19 +1,0 @@
-04/25/2024 14:24:32 - INFO - __main__ -   Training/evaluation parameters Namespace(train_data_file='../../MIL_instance_level/data/c/train.jsonl', output_dir='./saved_models', language_type='c', eval_data_file='../../MIL_instance_level/data/c/valid.jsonl', test_data_file='../../MIL_instance_level/data/c/test.jsonl', model_name_or_path='../../huggingface_models/microsoft/codebert-base/', block_size=400, do_train=False, do_eval=True, do_test=True, evaluate_during_training=False, train_batch_size=16, eval_batch_size=64, gradient_accumulation_steps=1, learning_rate=2e-05, weight_decay=0.0, adam_epsilon=1e-08, max_grad_norm=1.0, epoch=1, max_steps=-1, warmup_steps=0, logging_steps=50, save_steps=50, seed=123456, min_loss_delta=0.001, dropout_probability=0, device=device(type='cuda'), n_gpu=1, per_gpu_train_batch_size=16, per_gpu_eval_batch_size=64, start_epoch=0, start_step=0)
-04/25/2024 14:24:43 - INFO - __main__ -   ***** Running evaluation *****
-04/25/2024 14:24:43 - INFO - __main__ -     Num examples = 277
-04/25/2024 14:24:43 - INFO - __main__ -     Batch size = 64
-04/25/2024 14:24:47 - INFO - __main__ -   ***** Eval results *****
-04/25/2024 14:24:47 - INFO - __main__ -     eval_acc = 0.5704
-04/25/2024 14:24:47 - INFO - __main__ -     eval_f1 = 0.4848
-04/25/2024 14:24:47 - INFO - __main__ -     eval_loss = 1.1371
-04/25/2024 14:24:47 - INFO - __main__ -     eval_precision = 0.5714
-04/25/2024 14:24:47 - INFO - __main__ -     eval_recall = 0.4211
-04/25/2024 14:24:57 - INFO - __main__ -   ***** Running Test *****
-04/25/2024 14:24:57 - INFO - __main__ -     Num examples = 294
-04/25/2024 14:24:57 - INFO - __main__ -     Batch size = 64
-  0%|          | 0/5 [00:00<?, ?it/s] 20%|██        | 1/5 [00:00<00:01,  2.40it/s] 40%|████      | 2/5 [00:00<00:01,  2.62it/s] 60%|██████    | 3/5 [00:01<00:00,  2.70it/s] 80%|████████  | 4/5 [00:01<00:00,  2.74it/s]100%|██████████| 5/5 [00:01<00:00,  3.19it/s]100%|██████████| 5/5 [00:01<00:00,  2.93it/s]
-04/25/2024 14:24:59 - INFO - __main__ -   ***** test results *****
-04/25/2024 14:24:59 - INFO - __main__ -     test_acc = 0.5068
-04/25/2024 14:24:59 - INFO - __main__ -     test_f1 = 0.4314
-04/25/2024 14:24:59 - INFO - __main__ -     test_precision = 0.4911
-04/25/2024 14:24:59 - INFO - __main__ -     test_recall = 0.3846

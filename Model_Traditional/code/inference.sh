@@ -1,15 +1,15 @@
 python run.py \
     --output_dir=./saved_models \
-    --model_name_or_path=../../huggingface_models/microsoft/codebert-base/ \
+    --model_name_or_path=../../huggingface_models/microsoft/unixcoder-base/ \
+    --language_type=java \
+    --train_data_file=../../MIL/data/java/train.jsonl \
+    --eval_data_file=../../MIL/data/java/valid.jsonl \
+    --test_data_file=../../MIL/data/java/test.jsonl \
     --do_eval \
     --do_test \
-    --language_type=c \
-    --train_data_file=../../MIL_instance_level/data/c/train.jsonl \
-    --eval_data_file=../../MIL_instance_level/data/c/valid.jsonl \
-    --test_data_file=../../MIL_instance_level/data/c/test.jsonl \
     --block_size 400 \
     --train_batch_size 16 \
     --eval_batch_size 64 \
     --learning_rate 2e-5 \
     --max_grad_norm 1.0 \
-    --seed 123456 2>&1 | tee ../log/test.log
+    --seed 123456

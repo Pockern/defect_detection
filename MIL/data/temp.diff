@@ -1,0 +1,12 @@
+--- dataset_final_sorted/CWE-17/c/bad_1482_1	2021-05-03 21:25:08.000000000 +0800
++++ dataset_final_sorted/CWE-17/c/good_1482_1	2021-05-03 21:25:08.000000000 +0800
+@@ -129,7 +129,8 @@
+ 	 *	We now generate an ICMP HOST REDIRECT giving the route
+ 	 *	we calculated.
+ 	 */
+-	if (rt->rt_flags&RTCF_DOREDIRECT && !opt->srr && !skb_sec_path(skb))
++	if (IPCB(skb)->flags & IPSKB_DOREDIRECT && !opt->srr &&
++	    !skb_sec_path(skb))
+ 		ip_rt_send_redirect(skb);
+ 
+ 	skb->priority = rt_tos2priority(iph->tos);

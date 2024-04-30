@@ -10,8 +10,8 @@ import warnings
 from model import Model
 from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
-from transformers import (RobertaConfig, RobertaForSequenceClassification, RobertaModel,  RobertaTokenizer, AdamW,
-                          get_linear_schedule_with_warmup)
+from transformers import (RobertaConfig, RobertaModel, RobertaTokenizer, AdamW,
+                          get_linear_schedule_with_warmup, T5ForConditionalGeneration, T5Config, T5Tokenizer)
 
 # init logger
 logger = logging.getLogger(__name__)
@@ -33,17 +33,31 @@ def convert_examples_to_features(object, tokenizer, args):
     """    
     file_label = object['file_label']
     file_idx = object['file_idx']
-
-    code = ' '.join(object['file_code'][0].split())
-    code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
-    source_tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.sep_token]
-    source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
-    padding_length = args.block_size - len(source_ids)
-    source_ids += [tokenizer.pad_token_id] * padding_length
+    
+    if args.model_name == 'codebert-base':
+        code = ' '.join(object['file_code'][0].split())
+        code_tokens = tokenizer.tokenize(code)[:args.block_size-2]
+        source_tokens = [tokenizer.cls_token] + code_tokens + [tokenizer.sep_token]
+        source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
+        padding_length = args.block_size - len(source_ids)
+        source_ids += [tokenizer.pad_token_id] * padding_length
+    elif args.model_name == 'unixcoder-base':
+        code = ' '.join(object['file_code'][0].split())
+        code_tokens = tokenizer.tokenize(code)[:args.block_size-4]
+        source_tokens = [tokenizer.cls_token,"<encoder-only>",tokenizer.sep_token]+code_tokens+[tokenizer.sep_token]
+        source_ids = tokenizer.convert_tokens_to_ids(source_tokens)
+        padding_length = args.block_size - len(source_ids)
+        source_ids += [tokenizer.pad_token_id] * padding_length
+    elif args.model_name == 'codet5-base':
+        code = ' '.join(object['file_code'][0].split())
+        source_tokens = tokenizer.tokenize(code)[:args.block_size]
+        source_ids = tokenizer.encode(source_tokens, max_length=args.block_size, padding='max_length', truncation=True)
+    else:
+        print('The model type is unsupport')
+        exit(1)
 
     input_file_tokens = source_tokens
     input_file_ids = source_ids
-
     return InputFeatures(input_file_tokens, input_file_ids, file_idx, file_label)
 
 
@@ -129,9 +143,11 @@ def train(args, train_dataset, model, tokenizer):
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", args.max_steps)
 
+    model_name = os.path.basename(os.path.dirname(args.model_name_or_path))
     global_step = args.start_step
     tr_loss, logging_loss,avg_loss,tr_nb,tr_num,train_loss = 0.0, 0.0, 0.0, 0, 0, 0
     best_acc = 0.0
+    best_f1 = 0.0
     model.zero_grad()
 
     for idx in range(args.start_epoch, int(args.epoch)):
@@ -184,7 +200,23 @@ def train(args, train_dataset, model, tokenizer):
                             logger.info("  "+"*"*20)                          
                             
                             checkpoint_prefix = 'checkpoint-best-acc'
-                            output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))                        
+                            output_dir = os.path.join(args.output_dir, model_name, '{}'.format(checkpoint_prefix))                        
+                            if not os.path.exists(output_dir):
+                                os.makedirs(output_dir)                        
+                            model_to_save = model.module if hasattr(model, 'module') else model
+                            output_dir = os.path.join(output_dir, '{}'.format(args.language_type + '_model.bin')) 
+                            torch.save(model_to_save.state_dict(), output_dir)
+                            logger.info("Saving model checkpoint to %s", output_dir)
+                    
+                    if results['eval_f1'] > best_f1:
+                            # if results['eval_recall'] != 1:
+                            best_f1 = results['eval_f1']
+                            logger.info("  "+"*"*20)  
+                            logger.info("  Best f1:%s", round(best_f1, 4))
+                            logger.info("  "+"*"*20)                          
+                            
+                            checkpoint_prefix = 'checkpoint-best-f1'
+                            output_dir = os.path.join(args.output_dir, model_name, '{}'.format(checkpoint_prefix))                        
                             if not os.path.exists(output_dir):
                                 os.makedirs(output_dir)                        
                             model_to_save = model.module if hasattr(model, 'module') else model
@@ -238,7 +270,7 @@ def evaluate(args, model, tokenizer, eval_during_training=False):
     f1 = model.cal_f1(labels, preds)
     recall = model.cal_recall(labels, preds)
     result = {
-        "eval_loss": float(perplexity),
+        # "eval_loss": float(perplexity),
         "eval_acc":round(acc, 4),
         "eval_precision": round(precision, 4),
         "eval_f1": round(f1, 4),
@@ -266,7 +298,7 @@ def test(args, model, tokenizer):
     logits=[]   
     labels=[]
 
-    for batch in tqdm(test_dataloader, total=len(test_dataloader)):
+    for batch in test_dataloader:
         inputs = batch[0].to(args.device)        
         label = batch[1].to(args.device) 
         with torch.no_grad():
@@ -363,6 +395,7 @@ def main():
     # setup CUDA, GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
+    args.model_name = os.path.basename(os.path.dirname(args.model_name_or_path))
     args.n_gpu = torch.cuda.device_count()
     args.per_gpu_train_batch_size = args.train_batch_size // args.n_gpu
     args.per_gpu_eval_batch_size = args.eval_batch_size // args.n_gpu
@@ -394,12 +427,14 @@ def main():
         logger.info("reload model from {}, resume from {} epoch".format(checkpoint_last, args.start_epoch))
 
     # load pretrained model, config and tokenizer
-    tokenizer = RobertaTokenizer.from_pretrained(args.model_name_or_path)
-    config = RobertaConfig.from_pretrained(args.model_name_or_path)
-    # Classification tasks: 
-    config.num_labels = 1
-    model = RobertaModel.from_pretrained(args.model_name_or_path)
-    # model = RobertaForSequenceClassification.from_pretrained(args.model_name_or_path)
+    if args.model_name == 'codet5-base':
+        tokenizer = RobertaTokenizer.from_pretrained(args.model_name_or_path)
+        config = T5Config.from_pretrained(args.model_name_or_path)
+        model = T5ForConditionalGeneration.from_pretrained(args.model_name_or_path)
+    else:
+        tokenizer = RobertaTokenizer.from_pretrained(args.model_name_or_path)
+        config = RobertaConfig.from_pretrained(args.model_name_or_path) 
+        model = RobertaModel.from_pretrained(args.model_name_or_path)
 
     model = Model(model, config, tokenizer, args)
 
@@ -411,24 +446,48 @@ def main():
         train(args, train_dataset, model, tokenizer)
 
     if args.do_eval:
-        checkpoint_prefix = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
-        output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))  
-        model.load_state_dict(torch.load(output_dir))
+        checkpoint_prefix_acc = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
+        checkpoint_prefix_f1 = 'checkpoint-best-f1/' + args.language_type + '_model.bin'
+        output_dir_acc = os.path.join(args.output_dir, args.model_name, '{}'.format(checkpoint_prefix_acc))  
+        output_dir_f1 = os.path.join(args.output_dir, args.model_name, '{}'.format(checkpoint_prefix_f1))  
+        
+        logger.info("***** Eval begin *****")
+
+        model.load_state_dict(torch.load(output_dir_acc))
         model.to(args.device)
-        result = evaluate(args, model, tokenizer)
-        logger.info("***** Eval results *****")
-        for key in sorted(result.keys()):
-            logger.info("  %s = %s", key, str(round(result[key], 4)))
+        result_acc = evaluate(args, model, tokenizer)
+        logger.info("***** best acc model results *****")
+        for key in sorted(result_acc.keys()):
+            logger.info("  %s = %s", key, str(round(result_acc[key], 4)))
+
+        model.load_state_dict(torch.load(output_dir_f1))
+        model.to(args.device)
+        result_f1 = evaluate(args, model, tokenizer)
+        logger.info("***** best f1 model results *****")
+        for key in sorted(result_f1.keys()):
+            logger.info("  %s = %s", key, str(round(result_f1[key], 4)))
 
     if args.do_test:
-        checkpoint_prefix = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
-        output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))  
-        model.load_state_dict(torch.load(output_dir))                  
+        checkpoint_prefix_acc = 'checkpoint-best-acc/' + args.language_type + '_model.bin'
+        checkpoint_prefix_f1 = 'checkpoint-best-f1/' + args.language_type + '_model.bin'
+        output_dir_acc = os.path.join(args.output_dir, args.model_name, '{}'.format(checkpoint_prefix_acc))  
+        output_dir_f1 = os.path.join(args.output_dir, args.model_name, '{}'.format(checkpoint_prefix_f1))  
+
+        logger.info("***** Test begin *****")
+
+        model.load_state_dict(torch.load(output_dir_acc))
         model.to(args.device)
-        result = test(args, model, tokenizer)
-        logger.info("***** test results *****")
-        for key in sorted(result.keys()):
-            logger.info("  %s = %s", key, str(round(result[key], 4)))
+        result_acc = test(args, model, tokenizer)
+        logger.info("***** best acc model results *****")
+        for key in sorted(result_acc.keys()):
+            logger.info("  %s = %s", key, str(round(result_acc[key], 4)))
+
+        model.load_state_dict(torch.load(output_dir_f1))
+        model.to(args.device)
+        result_f1 = test(args, model, tokenizer)
+        logger.info("***** best f1 model results *****")
+        for key in sorted(result_f1.keys()):
+            logger.info("  %s = %s", key, str(round(result_f1[key], 4)))
 
 if __name__ == '__main__':
     main()

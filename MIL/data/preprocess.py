@@ -87,7 +87,7 @@ def remove_comment(code, language):
     :return: cleaned code
     """
     if language == 'c' or language == 'cpp':
-        pattern = r'//.*?$|/\*.*?\*/|/\*[\s\S]*?\*/|\*.*?$'
+        pattern = r'//.*?$|/\*.*?\*/|/\*[\s\S]*?\*/'
     elif language == 'py':
         pattern = r'#.*?$|#$|"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'|""".*?"""'
         language = 'python'
@@ -150,7 +150,7 @@ def slice(code, language):
     # js: function_declaration
 
     function_type = ["function_declarator", "class_declaration", "method_declaration", "function_definition",
-                     "function_declaration", "call", "local_function_statement", "class_specifier"
+                     "function_declaration", "call", "local_function_statement", "class_specifier",
                      
                      "compound_statement", "struct_specifier", "preproc_ifdef", 
                      "namespace_definition", 
@@ -176,6 +176,48 @@ def slice(code, language):
                                 functions.append(code[child.start_byte:child.end_byte].decode())
                                 functions_starts.append(child.start_point[0]+1)
                                 functions_ends.append(child.end_point[0]+1)
+
+    elif language == 'cpp':
+        for node in tree.root_node.children:
+            if node.type == 'class_specifier':
+                functions.append(code[node.start_byte:node.end_byte].decode())
+                functions_starts.append(node.start_point[0]+1)
+                functions_ends.append(node.end_point[0]+1)
+            elif node.type == 'function_definition':
+                functions.append(code[node.start_byte:node.end_byte].decode())
+                functions_starts.append(node.start_point[0]+1)
+                functions_ends.append(node.end_point[0]+1)
+
+    elif language == 'javascript':
+        for node in tree.root_node.children:
+            if node.type == 'expression_statement':
+                for part in node.children:
+                    if part.type == 'assignment_expression':
+                        if 'function_expression' in [child.type for child in part.children]:
+                            functions.append(code[part.start_byte:part.end_byte].decode())
+                            functions_starts.append(part.start_point[0]+1)
+                            functions_ends.append(part.end_point[0]+1)
+                    elif part.type == 'call_expression':
+                        for child in part.children:
+                            if child.type == 'member_expression':
+                                if 'identifier' in [c.type for c in child.children]:
+                                    functions.append(code[part.start_byte:part.end_byte].decode())
+                                    functions_starts.append(part.start_point[0]+1)
+                                    functions_ends.append(part.end_point[0]+1)
+                        
+            elif node.type == 'lexical_declaration':
+                for part in node.children:
+                    if part.type == 'variable_declarator':
+                        if 'function_expression' in [child.type for child in part.children]:
+                            functions.append(code[part.start_byte:part.end_byte].decode())
+                            functions_starts.append(part.start_point[0]+1)
+                            functions_ends.append(part.end_point[0]+1)
+
+            elif node.type == 'if_statement':
+                functions.append(code[node.start_byte:node.end_byte].decode())
+                functions_starts.append(node.start_point[0]+1)
+                functions_ends.append(node.end_point[0]+1)
+
     else:
         for node in tree.root_node.children:
             if node.type in function_type:
@@ -197,7 +239,7 @@ def get_label_of_functions_by_patches(functions_starts, functions_ends, patches_
         # for each patch
         for j in range(len(patches_divided_starts)):
             # patch[j] close to this func[i]
-            if patches_divided_starts[j] >= functions_starts[i]-1 and patches_divided_starts[j] <= functions_ends[i]+1:
+            if patches_divided_starts[j] >= functions_starts[i]-5 and patches_divided_starts[j] <= functions_ends[i]+5:
                 # union patches close to func?
                 if functions_label[i] == 0:
                     functions_label[i] = 1
@@ -319,13 +361,13 @@ def dump_files_by_language_from_subfolder(root_folder, language, output_dir):
     print('collect {} pairs of good/bad files from {}'.format(file_idx+1, language))
 
 
-def split_dataset(file_name, language, seed):
+def split_dataset(file_name, language, seed, limit_low, limit_high):
     output_dir = language
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
     # parameter init
-    random.seed(seed)
+    # random.seed(seed)
     train_data_file = os.path.join(output_dir, 'train.jsonl')
     valid_data_file = os.path.join(output_dir, 'valid.jsonl')
     test_data_file = os.path.join(output_dir, 'test.jsonl')
@@ -337,45 +379,67 @@ def split_dataset(file_name, language, seed):
         data = [json.loads(line.strip()) for line in f]
 
     # random.shuffle(data)
-    files = []
+    good_files = []
+    bad_files = []
     for cnt, object in enumerate(data):
-        file_idx = object['cwe'] + '/bad'+object['cwe_id']
-        functions = object['functions_before_patches']
-        file_code = object['before']
-        # 除去 \n\t
-        for function in functions:
-            function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
-        language = object['language']
-        file_label = 1
-        if len(functions) > 0 and cnt % 2 == 0:
-            files.append(DatasetEntry(file_idx, functions, file_code, language, file_label).to_dict())
-        # if len(functions) > 0:
-        #     files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+        bad_tag = False
+        good_tag = False
+        if object['before'] == '404: Not Found' and object['after'] != '404: Not Found':
+            good_tag = True
+        elif object['before'] != '404: Not Found' and object['after'] == '404: Not Found':
+            bad_tag = True
+
+
+        if cnt % 2 == 0 or bad_tag == True:
+            file_idx = object['cwe'] + '/bad'+object['cwe_id']
+            functions = object['functions_before_patches']
+            if len(functions) >= limit_low and len(functions) <= limit_high:
+                file_code = re.sub(r"[\n\t]", "", object['before'])     # 除去 \n\t
+                for function in functions:
+                    function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
+                language = object['language']
+                file_label = 1
+                
+                bad_files.append(DatasetEntry(file_idx, functions, file_code, language, file_label).to_dict())
 
         # -------------good -----------------------------------s
-        file_idx = file_idx.replace('bad', 'good')
-        functions = object['functions_after_patches']
-        file_code = object['after']
-        # 除去 \n\t
-        for function in functions:
-            function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
-        language = object['language']
-        file_label = 0
-        if len(functions) > 0 and cnt % 2 != 0:
-            files.append(DatasetEntry(file_idx, functions, file_code, language, file_label).to_dict())
-        # if len(functions) > 0:
-        #     files.append(DatasetEntry(file_idx, functions, language, file_label).to_dict())
+        if cnt % 2 != 0 or good_tag == True:
+            file_idx = object['cwe'] + '/good'+object['cwe_id']
+            functions = object['functions_after_patches']
+            if len(functions) >= limit_low and len(functions) <= limit_high:
+                file_code = re.sub(r"[\n\t]", "", object['after'])      # 除去 \n\t
+                for function in functions:
+                    function['function_code'] = re.sub(r"[\n\t]", "", function['function_code'])
+                language = object['language']
+                file_label = 0
+                
+                good_files.append(DatasetEntry(file_idx, functions, file_code, language, file_label).to_dict())
 
     
-    total_len = len(files)
-    random.shuffle(files)
-    train_len = int(total_len * train_ratio)
-    valid_len = int(total_len * valid_ratio)
-    test_len = total_len - train_len - valid_len
+    bad_len = len(bad_files)
+    good_len = len(good_files)
+    random.shuffle(bad_files)
+    # random.shuffle(good_files)
 
-    train_data = files[:train_len]
-    valid_data = files[train_len:train_len+valid_len]
-    test_data = files[train_len+valid_len:]
+    train_good_len = int(good_len * train_ratio)
+    valid_good_len = int(good_len * valid_ratio)
+    test_good_len = good_len - train_good_len - valid_good_len
+
+    train_bad_len = int(bad_len * train_ratio)
+    valid_bad_len = int(bad_len * valid_ratio)
+    test_bad_len = bad_len - train_bad_len - valid_bad_len
+
+    train_data = good_files[:train_good_len]
+    valid_data = good_files[train_good_len:train_good_len+valid_good_len]
+    test_data = good_files[train_good_len+valid_good_len:]
+
+    train_data.extend(bad_files[:train_bad_len])
+    valid_data.extend(bad_files[train_bad_len:train_bad_len+valid_bad_len])
+    test_data.extend(bad_files[train_bad_len+valid_bad_len:])
+
+    random.shuffle(train_data)
+    random.shuffle(valid_data)
+    random.shuffle(test_data)
 
     with open(train_data_file, 'w', encoding='utf-8') as f:
         for item in train_data:
@@ -392,28 +456,28 @@ def split_dataset(file_name, language, seed):
             json.dump(item, f)
             f.write('\n')
 
-    print('{} -- train dataset: {}, valid dataset: {}, test dataset: {}'.format(language, train_len, valid_len, test_len))
+    print('{} -- train dataset: {}, valid dataset: {}, test dataset: {}'.format(language, len(train_data), len(valid_data), len(test_data)))
 
 
-def limit_functions(file_name, output_dir, limit_low, limit_high):
-    js_objects = []
-    with open(file_name, 'r') as f:
-        for line in f:
-            data = json.loads(line)
-            js_objects.append(data)
+# def limit_functions(file_name, output_dir, limit_low, limit_high):
+#     js_objects = []
+#     with open(file_name, 'r') as f:
+#         for line in f:
+#             data = json.loads(line)
+#             js_objects.append(data)
 
-    dest_js = []
-    for object in js_objects:
-        functions = object['functions'][0]
-        # magic number by test(87 for single test)
-        if len(functions) <= limit_high and len(functions) >= limit_low:
-            dest_js.append(object)
+#     dest_js = []
+#     for object in js_objects:
+#         functions = object['functions'][0]
+#         # magic number by test(87 for single test)
+#         if len(functions) <= limit_high and len(functions) >= limit_low:
+#             dest_js.append(object)
 
-    with open(output_dir, 'w') as f:
-        for data in dest_js:
-            json.dump(data, f)
-            f.write('\n')
-    print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
+#     with open(output_dir, 'w') as f:
+#         for data in dest_js:
+#             json.dump(data, f)
+#             f.write('\n')
+#     print('{}: from {} collect {}'.format(file_name, len(js_objects), len(dest_js)))
 
 
 def main():
@@ -422,36 +486,70 @@ def main():
 
     # for language in language_list:
     #     file_name = language + '_divided.jsonl'
-    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=file_name)
+    #     output_dir = 'dump_files'
+    #     if not os.path.exists(output_dir):
+    #         os.makedirs(output_dir)
+    #     output_dir = os.path.join(output_dir, file_name)
+    #     dump_files_by_language_from_subfolder(root_folder=root_folder, language=language, output_dir=output_dir)
 
     # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     output = file_name
-    #     func(language, file_name, output)
+    #     file_name = 'dump_files/' + language + '_divided.jsonl'
+    #     output_dir = 'func_files/'
+    #     if not os.path.exists(output_dir):
+    #         os.makedirs(output_dir)
+    #     output_dir = output_dir + language + '_divided.jsonl'
+    #     func(language, file_name, output_dir)
 
-    # for language in language_list:
-    #     file_name = language + '_divided.jsonl'
-    #     split_dataset(file_name, language, 123456)
+    for language in language_list:
+        file_name = language + '_divided.jsonl'
+        file_name = os.path.join('func_files', file_name)
+        split_dataset(file_name, language, seed=123456, limit_low=1, limit_high=20)
 
-    # for language in language_list:
-    #     for file in ['train', 'test', 'valid']:
-    #         file_name = os.path.join(language, file + '.jsonl')
-    #         output_dir = file_name
-    #         limit_functions(file_name, output_dir, 1, 64)
 
+def func_for_test(language, divided_file_name, dest_file_name):
+    # open a jsonl file that each line represent a json object
+    with open(divided_file_name, "r", encoding = "utf-8") as r:
+        content = r.readlines()
+        # traverse each object of jsonl
+        for idx in range(len(content)):
+            object_dict = json.loads(content[idx])
+            file_idx = object_dict['cwe'] + '/' + object_dict['language'] + '/' + object_dict['cwe_id']
+            if file_idx == dest_file_name:
+                
+                code_before_patched =  object_dict['before']['file_code']
+
+                patches = object_dict['patches']
+                with open('patches.temp', 'w') as f:
+                    f.write(patches)
+
+                pattern = re.compile(r'@@ -(\d+),?(\d*) \+(\d+),?(\d*) @@')
+                matches = pattern.findall(patches)
+                patch_divided_temp = patches.split('@@')
+                patches_divided = []
+                patches_divided_starts = []
+                cnt = 1
+                for match in matches:
+                    old_start, old_lines, new_start, new_lines = int(match[0]), match[1], int(match[2]), match[3]
+                    patches_divided_starts.append(old_start)
+                    patches_divided.append( '@@ ' + patch_divided_temp[cnt] + ' @@' + patch_divided_temp[cnt+1])
+                    cnt += 2
+
+                functions, functions_starts, functions_ends = slice(code_before_patched, language)
+                with open('functions.temp', 'w') as f:
+                    for function in functions:
+                        f.write(remove_comment(function, object_dict['language']))
+                        f.write('\n'+'-'*20 + '\n')
+
+                functions_label = get_label_of_functions_by_patches(functions_starts, functions_ends, patches_divided_starts)
 
 def test():
     """
     仅用作测试各种特殊情况
     """
-    file_path = 'dataset_final_sorted/CWE-20/java/bad_4182_2'
-    file_path = '/home/u200110901/jupyterlab/Defect-detection/MIL/data/dataset_final_sorted/CWE-59/py/good_2084_2'
-    # file_path = 'java_divided.jsonl'
-    output_dir = 'test.json'
-    with open(file_path, 'r') as f:
-        code = f.read()
-    
-    slice(code, 'py')
+    file_path = 'dump_files/py_divided.jsonl'
+    dest = 'CWE-287/py/_4331_0'
+
+    func_for_test('py', file_path, dest)
 
 
 if __name__ == '__main__':

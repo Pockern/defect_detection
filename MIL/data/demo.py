@@ -1,5 +1,5 @@
 import json
-import random
+import numpy as np
 import os
 
 def len_of_json(file_name):
@@ -109,12 +109,15 @@ def bag_state(file_name):
 
     pos = 0
     neg = 0
+    functions_len = []
     for object in objects:
+        functions_len.append(len(object['functions'][0]))
         if object['file_label'] == 1:
             neg += 1
         else:
             pos += 1
-    print('{}: good bag {} / bad bag {}'.format(file_name, pos, neg))
+    print('{}: good bag {} / bad bag {} -- {}:{} \t\t avg: {} / median: {} / min: {} / max: {}'\
+          .format(file_name, pos, neg, round(pos / (pos+neg), 4), round(neg / (pos+neg), 4), round(np.mean(functions_len), 1), np.median(functions_len), np.min(functions_len), np.max(functions_len)))
 
 
 def has_repeat(file_name):
@@ -141,8 +144,8 @@ def main():
             file_name = os.path.join(language, file)
 
             # function_state(file_name)
-            len_of_json(file_name)
-            # bag_state(file_name)
+            # len_of_json(file_name)
+            bag_state(file_name)
             # has_repeat(file_name)
         
 
