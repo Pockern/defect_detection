@@ -208,7 +208,8 @@ def train(args, train_dataset, model, tokenizer):
                         for key, value in results.items():
                             logger.info("  %s = %s", key, round(value,4))
 
-                    if results['eval_acc'] > best_acc and results['eval_recall'] != 0 and results['eval_recall'] != 1:
+                    # if results['eval_acc'] > best_acc and results['eval_recall'] != 0 and results['eval_recall'] != 1:
+                    if results['eval_acc'] > best_acc:
                             best_acc = results['eval_acc']
                             logger.info("  "+"*"*20)  
                             logger.info("  Best acc:%s", round(best_acc, 4))
@@ -223,7 +224,8 @@ def train(args, train_dataset, model, tokenizer):
                             torch.save(model_to_save.state_dict(), output_dir)
                             logger.info("Saving model checkpoint to %s", output_dir) 
 
-                    if results['eval_f1'] > best_f1 and results['eval_recall'] != 0 and results['eval_recall'] != 1:
+                    # if results['eval_f1'] > best_f1 and results['eval_recall'] != 0 and results['eval_recall'] != 1:
+                    if results['eval_f1'] > best_f1:
                             # if results['eval_recall'] != 1:
                             #     best_f1 = results['eval_f1']
                             best_f1 = results['eval_f1']

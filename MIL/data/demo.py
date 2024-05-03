@@ -138,7 +138,7 @@ def has_repeat(file_name):
 
 
 def main():
-    for language in ['c', 'cpp', 'py', 'java', 'js']:
+    for language in ['c', 'java', 'py', 'js']:
         print('\n')
         for file in ['train.jsonl', 'valid.jsonl', 'test.jsonl']:
             file_name = os.path.join(language, file)
